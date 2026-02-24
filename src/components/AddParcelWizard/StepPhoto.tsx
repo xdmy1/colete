@@ -107,6 +107,7 @@ export default function StepPhoto({ onComplete }: StepPhotoProps) {
         </button>
       )}
 
+      {/* Camera input (mobile) */}
       <input
         ref={inputRef}
         type="file"

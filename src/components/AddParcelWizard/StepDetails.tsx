@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { ContactDetails } from '../../lib/types'
 import type { DestinationCode } from '../../lib/utils'
 import { calculatePrice, getCurrency, formatPrice } from '../../lib/utils'
+import { useContacts } from '../../hooks/useContacts'
 import Button from '../ui/Button'
 
 interface StepDetailsProps {
@@ -29,6 +30,83 @@ const PHONE_PREFIX: Record<DestinationCode, string> = {
   NL: '+31 ',
 }
 
+function ContactAutocomplete({
+  placeholder,
+  value,
+  contacts,
+  onChange,
+  onSelect,
+  inputCls,
+  type = 'text',
+}: {
+  placeholder: string
+  value: string
+  contacts: ContactDetails[]
+  onChange: (val: string) => void
+  onSelect: (contact: ContactDetails) => void
+  inputCls: string
+  type?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  const query = value.toLowerCase().trim()
+  const suggestions = query.length >= 2
+    ? contacts.filter(
+        (c) =>
+          c.name.toLowerCase().includes(query) ||
+          c.phone.includes(query)
+      ).slice(0, 5)
+    : []
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <input
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        className={inputCls}
+      />
+      {open && suggestions.length > 0 && (
+        <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-card-border rounded-xl shadow-lg overflow-hidden">
+          {suggestions.map((contact, i) => (
+            <button
+              key={contact.phone + i}
+              type="button"
+              onClick={() => {
+                onSelect(contact)
+                setOpen(false)
+              }}
+              className="w-full text-left px-4 py-2.5 hover:bg-pill-green-bg/50 transition-colors border-b border-card-border last:border-b-0"
+            >
+              <span className="text-sm font-semibold text-slate-800">{contact.name}</span>
+              <span className="text-xs text-slate-400 ml-2">{contact.phone}</span>
+              {contact.address && (
+                <p className="text-xs text-slate-400 truncate">{contact.address}</p>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function StepDetails({
   originCode,
   deliveryDestination,
@@ -45,6 +123,8 @@ export default function StepDetails({
   }))
   const [contentDesc, setContentDesc] = useState(initialData.content_description)
   const [weight, setWeight] = useState(initialData.weight || 0)
+
+  const { data: contacts = [] } = useContacts()
 
   const currency = getCurrency(originCode, deliveryDestination)
   const price = calculatePrice(weight)
@@ -79,12 +159,13 @@ export default function StepDetails({
         <legend className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
           Expeditor
         </legend>
-        <input
-          type="text"
+        <ContactAutocomplete
           placeholder="Nume expeditor *"
           value={sender.name}
-          onChange={(e) => setSender({ ...sender, name: e.target.value })}
-          className={inputCls}
+          contacts={contacts}
+          onChange={(val) => setSender({ ...sender, name: val })}
+          onSelect={(c) => setSender({ name: c.name, phone: c.phone, address: c.address })}
+          inputCls={inputCls}
         />
         <input
           type="tel"
@@ -107,12 +188,13 @@ export default function StepDetails({
         <legend className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
           Destinatar
         </legend>
-        <input
-          type="text"
+        <ContactAutocomplete
           placeholder="Nume destinatar *"
           value={receiver.name}
-          onChange={(e) => setReceiver({ ...receiver, name: e.target.value })}
-          className={inputCls}
+          contacts={contacts}
+          onChange={(val) => setReceiver({ ...receiver, name: val })}
+          onSelect={(c) => setReceiver({ name: c.name, phone: c.phone, address: c.address })}
+          inputCls={inputCls}
         />
         <input
           type="tel"

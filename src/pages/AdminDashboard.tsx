@@ -20,6 +20,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel } from '../hooks/useParcels'
 import { calculatePrice } from '../lib/utils'
 import { formatPrice, getDestLabel, ROUTES } from '../lib/utils'
+import { exportParcelsToExcel } from '../lib/exportExcel'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
@@ -288,21 +289,39 @@ export default function AdminDashboard() {
         </select>
       </div>
 
-      {/* Results count + select all */}
+      {/* Results count + select all + export */}
       <div className="flex items-center justify-between mb-3 px-0.5">
         <p className="text-xs text-slate-400 font-medium">
           {filteredParcels.length} colete
           {(driverFilter !== 'all' || routeFilter !== 'all' || statusFilter !== 'all' || search) &&
             ` (din ${parcels?.length || 0})`}
         </p>
-        {selectMode && filteredParcels.length > 0 && (
-          <button
-            onClick={selectedIds.size === filteredParcels.length ? () => setSelectedIds(new Set()) : selectAll}
-            className="text-xs font-semibold text-emerald-600 hover:text-emerald-800"
-          >
-            {selectedIds.size === filteredParcels.length ? 'Deselectează tot' : 'Selectează tot'}
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {filteredParcels.length > 0 && (
+            <button
+              onClick={() => {
+                const toExport = selectMode && selectedIds.size > 0
+                  ? filteredParcels.filter((p) => selectedIds.has(p.id))
+                  : filteredParcels
+                exportParcelsToExcel(toExport, getDriverName)
+              }}
+              className="text-xs font-semibold text-blue-500 hover:text-blue-700 flex items-center gap-1"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Excel{selectMode && selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+            </button>
+          )}
+          {selectMode && filteredParcels.length > 0 && (
+            <button
+              onClick={selectedIds.size === filteredParcels.length ? () => setSelectedIds(new Set()) : selectAll}
+              className="text-xs font-semibold text-emerald-600 hover:text-emerald-800"
+            >
+              {selectedIds.size === filteredParcels.length ? 'Deselectează tot' : 'Selectează tot'}
+            </button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (

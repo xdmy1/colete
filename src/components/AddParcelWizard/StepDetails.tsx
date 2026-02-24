@@ -22,14 +22,27 @@ interface StepDetailsProps {
   }
 }
 
+const PHONE_PREFIX: Record<DestinationCode, string> = {
+  MD: '+373 ',
+  UK: '+44 ',
+  BE: '+32 ',
+  NL: '+31 ',
+}
+
 export default function StepDetails({
   originCode,
   deliveryDestination,
   onComplete,
   initialData,
 }: StepDetailsProps) {
-  const [sender, setSender] = useState<ContactDetails>(initialData.sender_details)
-  const [receiver, setReceiver] = useState<ContactDetails>(initialData.receiver_details)
+  const [sender, setSender] = useState<ContactDetails>(() => ({
+    ...initialData.sender_details,
+    phone: initialData.sender_details.phone || PHONE_PREFIX[originCode],
+  }))
+  const [receiver, setReceiver] = useState<ContactDetails>(() => ({
+    ...initialData.receiver_details,
+    phone: initialData.receiver_details.phone || PHONE_PREFIX[deliveryDestination],
+  }))
   const [contentDesc, setContentDesc] = useState(initialData.content_description)
   const [weight, setWeight] = useState(initialData.weight || 0)
 

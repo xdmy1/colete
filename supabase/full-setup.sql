@@ -1,22 +1,12 @@
 -- ============================================================
--- LOGISTICS PLATFORM — Supabase SQL Schema
--- Routes: MD ↔ UK / BE / NL
--- ============================================================
--- LOGICA DESTINATII:
--- Soferul selecteaza ORIGINEA coletului:
---   UK/BE/NL = coletul vine din strainatate → se livreaza in MD
---   MD = coletul e din Moldova → apare sub-selector: UK, BE, NL
---
--- NUMEROTARE:
--- Fiecare sofer are un range (ex: 0-100, 100-200)
--- Numerele cresc SECVENTIAL indiferent de destinatie
--- Ion (0-100): colet #1 (UK), B-2 (BE), OL-3 (NL), #4 (UK)...
--- Prefixul depinde de delivery_destination:
---   UK = N (doar numarul), BE = BN, NL = OLN
+-- COLETE APP — FULL DATABASE SETUP
+-- Rulează tot acest fișier în Supabase SQL Editor
 -- ============================================================
 
+-- ============================================================
 -- 1. PROFILES TABLE
-CREATE TABLE public.profiles (
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.profiles (
   id          uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username    text NOT NULL UNIQUE,
   pin_code    text NOT NULL,
@@ -29,7 +19,7 @@ CREATE TABLE public.profiles (
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Helper: verifica daca userul curent e admin (SECURITY DEFINER evita recursie RLS)
+-- Helper: verifica daca userul curent e admin
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER
@@ -39,6 +29,14 @@ AS $$
     WHERE id = auth.uid() AND role = 'admin'
   );
 $$;
+
+-- RLS policies for profiles
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "profiles_select" ON public.profiles;
+  DROP POLICY IF EXISTS "profiles_update_own" ON public.profiles;
+  DROP POLICY IF EXISTS "profiles_admin_all" ON public.profiles;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
 CREATE POLICY "profiles_select" ON public.profiles
   FOR SELECT USING (true);
@@ -52,75 +50,56 @@ CREATE POLICY "profiles_admin_all" ON public.profiles
 -- ============================================================
 -- 2. PARCELS TABLE
 -- ============================================================
-CREATE TABLE public.parcels (
+CREATE TABLE IF NOT EXISTS public.parcels (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-
-  -- Identificare
-  human_id              text NOT NULL,       -- "#7", "B-15", "OL-4"
-  numeric_id            int NOT NULL,        -- nr secvential in range-ul soferului
-
-  -- Atribuire
+  human_id              text NOT NULL,
+  numeric_id            int NOT NULL,
   driver_id             uuid NOT NULL REFERENCES public.profiles(id),
-  week_id               text NOT NULL,       -- "2026-W07"
-
-  -- Status
+  week_id               text NOT NULL,
   status                text NOT NULL DEFAULT 'pending'
                         CHECK (status IN ('pending', 'delivered')),
   is_archived           boolean NOT NULL DEFAULT false,
-
-  -- Ruta: de unde vine si unde se livreaza
   origin_code           text NOT NULL
                         CHECK (origin_code IN ('UK', 'BE', 'NL', 'MD')),
   delivery_destination  text NOT NULL
                         CHECK (delivery_destination IN ('UK', 'BE', 'NL', 'MD')),
-  -- Exemplu: origin=MD, delivery=UK = colet din Moldova livrat in Anglia
-  -- Exemplu: origin=UK, delivery=MD = colet din Anglia livrat in Moldova
-
-  -- Detalii expeditor/destinatar
   sender_details        jsonb NOT NULL DEFAULT '{}'::jsonb,
   receiver_details      jsonb NOT NULL DEFAULT '{}'::jsonb,
   content_description   text,
   appearance            text CHECK (appearance IN ('box', 'bag', 'envelope', 'other')),
-
-  -- Pret: greutate * 1.5, moneda depinde de delivery_destination
   weight                real NOT NULL DEFAULT 0,
   price                 real NOT NULL DEFAULT 0,
   currency              text NOT NULL DEFAULT 'GBP'
                         CHECK (currency IN ('GBP', 'EUR')),
-
-  -- Dovada foto (obligatorie la adaugare)
   photo_url             text,
-
-  -- Ordine traseu (admin drag & drop)
   route_order           int NOT NULL DEFAULT 0,
-
-  -- Label-uri: "L" = Livrare (transferat de admin la sofer)
   labels                text[] DEFAULT '{}',
-
-  -- Feedback la livrare
   client_satisfied      boolean,
   delivery_note         text,
   delivered_at          timestamptz,
-
   created_at            timestamptz NOT NULL DEFAULT now(),
   updated_at            timestamptz NOT NULL DEFAULT now()
 );
 
--- Indexuri
-CREATE INDEX idx_parcels_driver_week ON public.parcels(driver_id, week_id);
-CREATE INDEX idx_parcels_status ON public.parcels(status);
-CREATE INDEX idx_parcels_archived ON public.parcels(is_archived);
-CREATE INDEX idx_parcels_delivery ON public.parcels(delivery_destination);
+CREATE INDEX IF NOT EXISTS idx_parcels_driver_week ON public.parcels(driver_id, week_id);
+CREATE INDEX IF NOT EXISTS idx_parcels_status ON public.parcels(status);
+CREATE INDEX IF NOT EXISTS idx_parcels_archived ON public.parcels(is_archived);
+CREATE INDEX IF NOT EXISTS idx_parcels_delivery ON public.parcels(delivery_destination);
 
--- Unicitate: un singur numeric_id per sofer per saptamana (INDIFERENT de destinatie!)
-CREATE UNIQUE INDEX idx_parcels_unique_number
+CREATE UNIQUE INDEX IF NOT EXISTS idx_parcels_unique_number
   ON public.parcels(driver_id, week_id, numeric_id)
   WHERE is_archived = false;
 
 ALTER TABLE public.parcels ENABLE ROW LEVEL SECURITY;
 
--- Soferii vad doar coletele lor, adminul vede tot
--- Folosim public.is_admin() pentru a evita recursie RLS
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "parcels_driver_select" ON public.parcels;
+  DROP POLICY IF EXISTS "parcels_driver_insert" ON public.parcels;
+  DROP POLICY IF EXISTS "parcels_driver_update" ON public.parcels;
+  DROP POLICY IF EXISTS "parcels_admin_delete" ON public.parcels;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
 CREATE POLICY "parcels_driver_select" ON public.parcels
   FOR SELECT USING (auth.uid() = driver_id OR public.is_admin());
 
@@ -137,17 +116,13 @@ CREATE POLICY "parcels_admin_delete" ON public.parcels
 -- 3. HELPER FUNCTIONS
 -- ============================================================
 
--- Saptamana curenta in format ISO: "2026-W07"
 CREATE OR REPLACE FUNCTION public.get_current_week_id()
 RETURNS text
 LANGUAGE sql STABLE
 AS $$
-  SELECT to_char(now(), 'IYYY-"W"IW');
+  SELECT to_char(now(), 'IYYY') || '-W' || to_char(now(), 'IW');
 $$;
 
--- Urmatorul numeric_id disponibil pentru un sofer intr-o saptamana
--- IMPORTANT: numarul creste SECVENTIAL pe tot range-ul, NU per destinatie!
--- Ion (0-100): #1, B-2, OL-3, #4... toate folosesc acelasi contor
 CREATE OR REPLACE FUNCTION public.get_next_numeric_id(
   p_driver_id uuid,
   p_week_id text
@@ -167,8 +142,6 @@ BEGIN
     RAISE EXCEPTION 'Sofer negasit: %', p_driver_id;
   END IF;
 
-  -- Gaseste cel mai mare numeric_id folosit de sofer in saptamana asta
-  -- Cauta in TOATE coletele (inclusiv arhivate) ca sa nu reseteze contorul
   SELECT COALESCE(MAX(numeric_id), v_range_start) INTO v_max_used
   FROM public.parcels
   WHERE driver_id = p_driver_id
@@ -178,8 +151,6 @@ BEGIN
 END;
 $$;
 
--- Construieste human_id din destinatie + numar
--- UK → N (doar numarul), BE → BN, NL → OLN, MD → N
 CREATE OR REPLACE FUNCTION public.build_human_id(
   p_delivery_destination text,
   p_numeric_id int
@@ -194,7 +165,6 @@ AS $$
   END;
 $$;
 
--- Auto-update updated_at
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -205,15 +175,14 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS parcels_updated_at ON public.parcels;
 CREATE TRIGGER parcels_updated_at
   BEFORE UPDATE ON public.parcels
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_updated_at();
 
 -- ============================================================
--- 4. SUNDAY RESET — Arhiveaza doar coletele livrate (verde)
--- Cele pending (galben) raman pentru saptamana urmatoare
--- Se apeleaza via Supabase Edge Function + Cron (duminica 23:59)
+-- 4. SUNDAY ARCHIVE (duminica 23:59 arhiveaza coletele livrate)
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.sunday_archive_reset()
 RETURNS void
@@ -225,37 +194,52 @@ BEGIN
   SET is_archived = true
   WHERE status = 'delivered'
     AND is_archived = false;
-  -- Coletele PENDING NU se ating — raman in dashboard
 END;
 $$;
 
 -- ============================================================
--- 5. STORAGE BUCKET
--- Creaza manual in Supabase Dashboard bucket-ul "parcels":
+-- 5. FIX WEEK IDS (corectează week_id pe baza created_at)
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.fix_week_ids()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  UPDATE public.parcels
+  SET week_id = to_char(created_at, 'IYYY') || '-W' || to_char(created_at, 'IW');
+END;
+$$;
+
+-- ============================================================
+-- 6. CRON: arhivare automata duminica la 23:59
+-- Necesita extensia pg_cron activata!
+-- Dashboard → Database → Extensions → pg_cron → Enable
+-- ============================================================
+-- CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
+-- SELECT cron.schedule(
+--   'sunday-archive-reset',
+--   '59 23 * * 0',
+--   $$SELECT public.sunday_archive_reset()$$
+-- );
+
+-- ============================================================
+-- 7. STORAGE: bucket "parcels" pentru poze
+-- Creează manual în Dashboard → Storage → New Bucket:
+--   Name: parcels
 --   Public: false
 --   File size limit: 10MB
 --   MIME types: image/jpeg, image/png, image/webp
--- Apoi aplica aceste politici:
 -- ============================================================
 
--- INSERT: userii autentificati pot uploada in folderul lor
--- CREATE POLICY "parcel_photos_insert" ON storage.objects
---   FOR INSERT TO authenticated
---   WITH CHECK (
---     bucket_id = 'parcels'
---     AND (storage.foldername(name))[1] = auth.uid()::text
---   );
-
--- SELECT: userii vad pozele lor, adminul vede tot
--- CREATE POLICY "parcel_photos_select" ON storage.objects
---   FOR SELECT TO authenticated
---   USING (
---     bucket_id = 'parcels'
---     AND (
---       (storage.foldername(name))[1] = auth.uid()::text
---       OR EXISTS (
---         SELECT 1 FROM public.profiles
---         WHERE id = auth.uid() AND role = 'admin'
---       )
---     )
---   );
+-- ============================================================
+-- 8. SEED USERS
+-- NOTA: Userii trebuie creati prin Supabase Auth API (seed-users.ts)
+-- Nu se pot crea direct din SQL fiindca auth.users e managed de Supabase
+-- Rulează: npx tsx scripts/seed-users.ts
+--
+-- Useri default:
+--   admin       → PIN: 0000 (admin)
+--   ion_centru  → PIN: 1234 (driver, range 0-100)
+--   vasile_nord → PIN: 5678 (driver, range 100-200)
+--   mihai_sud   → PIN: 9012 (driver, range 200-300)
+-- ============================================================

@@ -132,9 +132,10 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   v_range_start int;
+  v_range_end int;
   v_max_used int;
 BEGIN
-  SELECT range_start INTO v_range_start
+  SELECT range_start, range_end INTO v_range_start, v_range_end
   FROM public.profiles
   WHERE id = p_driver_id;
 
@@ -145,7 +146,9 @@ BEGIN
   SELECT COALESCE(MAX(numeric_id), v_range_start) INTO v_max_used
   FROM public.parcels
   WHERE driver_id = p_driver_id
-    AND week_id = p_week_id;
+    AND week_id = p_week_id
+    AND numeric_id >= v_range_start
+    AND numeric_id < v_range_end;
 
   RETURN v_max_used + 1;
 END;

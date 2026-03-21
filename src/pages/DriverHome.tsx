@@ -263,7 +263,9 @@ export default function DriverHome() {
                   onChange={(e) => setCashCollected(e.target.checked)}
                   className="w-5 h-5 accent-emerald-600 rounded"
                 />
-                <span className="text-base font-semibold text-slate-700">S-a achitat</span>
+                <span className="text-base font-semibold text-slate-700">
+                  S-a achitat — <span className="text-emerald-700">{formatPrice(selectedParcel.price, selectedParcel.currency)}</span>
+                </span>
               </label>
             )}
 

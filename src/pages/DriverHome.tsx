@@ -33,6 +33,7 @@ export default function DriverHome() {
   const [cashCollected, setCashCollected] = useState(false)
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'cod'>('all')
   const [routeFilter, setRouteFilter] = useState<string>('all')
+  const [search, setSearch] = useState('')
 
   const allActive = parcels?.filter((p) => p.status === 'pending') || []
   const deliveredParcels = parcels?.filter((p) => p.status === 'delivered') || []
@@ -45,6 +46,18 @@ export default function DriverHome() {
 
   const activeParcels = allActive
     .filter(p => routeFilter === 'all' || `${p.origin_code}-${p.delivery_destination}` === routeFilter)
+
+  function applySearch(list: Parcel[]) {
+    if (!search.trim()) return list
+    const q = search.toLowerCase().trim()
+    return list.filter(p =>
+      p.human_id.toLowerCase().includes(q) ||
+      p.receiver_details.name.toLowerCase().includes(q) ||
+      p.sender_details.name.toLowerCase().includes(q) ||
+      p.receiver_details.phone.includes(q) ||
+      p.receiver_details.address.toLowerCase().includes(q)
+    )
+  }
 
   function handleMarkDelivered() {
     setShowFeedback(true)
@@ -95,6 +108,30 @@ export default function DriverHome() {
               <p className="text-2xl font-extrabold text-emerald-700">{deliveredParcels.length}</p>
               <p className="text-xs font-semibold text-emerald-600/70 uppercase tracking-wide">Livrate</p>
             </div>
+          </div>
+
+          {/* Search */}
+          <div className="mb-3 relative">
+            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Caută după nume, telefon, adresă, ID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-9 py-2.5 rounded-full border border-card-border bg-white text-sm focus:outline-none focus:ring-1 focus:ring-pill-green-border focus:border-pill-green-border transition-all"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-gray-100"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
 
           {/* Route filter — doar daca sunt mai multe rute */}
@@ -164,12 +201,12 @@ export default function DriverHome() {
               </div>
             ) : (
               <div className="space-y-3">
-                {activeParcels
+                {applySearch(activeParcels
                   .filter(p =>
                     paymentFilter === 'all' ? true :
                     paymentFilter === 'paid' ? p.payment_status === 'paid' :
                     (p.payment_status === 'cod' || !p.payment_status)
-                  )
+                  ))
                   .map((parcel) => (
                     <ParcelCard
                       key={parcel.id}
@@ -188,7 +225,7 @@ export default function DriverHome() {
                 Livrate ({deliveredParcels.length})
               </h2>
               <div className="space-y-3">
-                {deliveredParcels.map((parcel) => (
+                {applySearch(deliveredParcels).map((parcel) => (
                   <ParcelCard
                     key={parcel.id}
                     parcel={parcel}

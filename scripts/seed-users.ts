@@ -73,6 +73,47 @@ const USERS: {
       { origin: 'BE', destination: 'MD', range_start: 450, range_end: 499 }, // 450-499
     ],
   },
+  // ── Anglia → Moldova (inbound UK→MD) ──
+  {
+    username: 'iurie_caraman',
+    pin: '0199',
+    role: 'driver',
+    routes: [
+      { origin: 'UK', destination: 'MD', range_start: 1, range_end: 99 },
+    ],
+  },
+  {
+    username: 'rosca_alex',
+    pin: '1001',
+    role: 'driver',
+    routes: [
+      { origin: 'UK', destination: 'MD', range_start: 100, range_end: 199 },
+    ],
+  },
+  {
+    username: 'ion_universal',
+    pin: '2200',
+    role: 'driver',
+    routes: [
+      { origin: 'UK', destination: 'MD', range_start: 200, range_end: 299 },
+    ],
+  },
+  {
+    username: 'alexandru_popa',
+    pin: '4400',
+    role: 'driver',
+    routes: [
+      { origin: 'UK', destination: 'MD', range_start: 400, range_end: 499 },
+    ],
+  },
+  {
+    username: 'mihai_calmic',
+    pin: '7700',
+    role: 'driver',
+    routes: [
+      { origin: 'UK', destination: 'MD', range_start: 700, range_end: 799 },
+    ],
+  },
   // ── Repartizare (inbound x→MD) ──
   {
     username: 'catalin',
@@ -168,6 +209,11 @@ async function seed() {
   console.log('   gheorghe             → PIN: 3030  MD→* [300-349]')
   console.log('   stelian              → PIN: 3535  MD→* [350-399]')
   console.log('   ghenadie             → PIN: 4004  MD→BE [400-449]  BE→MD [450-499]')
+  console.log('   iurie_caraman        → PIN: 0199  UK→MD [1-99]')
+  console.log('   rosca_alex           → PIN: 1001  UK→MD [100-199]')
+  console.log('   ion_universal        → PIN: 2200  UK→MD [200-299]')
+  console.log('   alexandru_popa       → PIN: 4400  UK→MD [400-499]')
+  console.log('   mihai_calmic         → PIN: 7700  UK→MD [700-799]')
   console.log('   catalin              → PIN: 1212  BE→MD [B100-B199]')
   console.log('   repartizare_germania → PIN: 5050  DE→MD [D500-D550]  NL→MD [OL550-OL599]')
   console.log('   repartizare_olanda   → PIN: 2020  NL→MD [OL200-OL299]')

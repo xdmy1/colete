@@ -31,6 +31,7 @@ export default function DriverHome() {
   )
   const [feedbackNote, setFeedbackNote] = useState('')
   const [cashCollected, setCashCollected] = useState(false)
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'cod'>('all')
 
   const activeParcels = parcels?.filter((p) => p.status === 'pending') || []
   const deliveredParcels =
@@ -87,6 +88,27 @@ export default function DriverHome() {
             </div>
           </div>
 
+          {/* Payment filter */}
+          <div className="flex gap-2 mb-4">
+            {(['all', 'paid', 'cod'] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setPaymentFilter(f)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                  paymentFilter === f
+                    ? f === 'paid'
+                      ? 'bg-emerald-50 border-emerald-400 text-emerald-700'
+                      : f === 'cod'
+                        ? 'bg-red-50 border-red-400 text-red-600'
+                        : 'bg-slate-800 border-slate-800 text-white'
+                    : 'bg-white border-card-border text-slate-400 hover:border-slate-300'
+                }`}
+              >
+                {f === 'all' ? `Toate (${activeParcels.length})` : f === 'paid' ? `Achitat (${activeParcels.filter(p => p.payment_status === 'paid').length})` : `La livrare (${activeParcels.filter(p => p.payment_status === 'cod' || !p.payment_status).length})`}
+              </button>
+            ))}
+          </div>
+
           {/* Active parcels */}
           <section className="mb-6">
             {activeParcels.length === 0 ? (
@@ -101,13 +123,19 @@ export default function DriverHome() {
               </div>
             ) : (
               <div className="space-y-3">
-                {activeParcels.map((parcel) => (
-                  <ParcelCard
-                    key={parcel.id}
-                    parcel={parcel}
-                    onClick={() => setSelectedParcel(parcel)}
-                  />
-                ))}
+                {activeParcels
+                  .filter(p =>
+                    paymentFilter === 'all' ? true :
+                    paymentFilter === 'paid' ? p.payment_status === 'paid' :
+                    (p.payment_status === 'cod' || !p.payment_status)
+                  )
+                  .map((parcel) => (
+                    <ParcelCard
+                      key={parcel.id}
+                      parcel={parcel}
+                      onClick={() => setSelectedParcel(parcel)}
+                    />
+                  ))}
               </div>
             )}
           </section>

@@ -96,7 +96,6 @@ export default function StepPhoto({ photos, onChange, onComplete }: StepPhotoPro
         type="file"
         accept="image/*"
         capture="environment"
-        multiple
         onChange={handleFileChange}
         className="hidden"
       />

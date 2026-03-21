@@ -151,6 +151,7 @@ export function useAddParcel(driverId: string) {
         content_description: parcelData.content_description || null,
         nr_bucati: parcelData.nr_bucati,
         payment_status: parcelData.payment_status,
+        transfer_recipient: parcelData.transfer_recipient ?? null,
         weight: parcelData.weight,
         price,
         currency,

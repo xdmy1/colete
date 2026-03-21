@@ -378,6 +378,10 @@ function ParcelCard({
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-bold border border-red-300">
                 La livrare
               </span>
+            ) : parcel.payment_status === 'transfer' ? (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-bold border border-blue-300">
+                Transfer
+              </span>
             ) : null}
           </div>
         </button>

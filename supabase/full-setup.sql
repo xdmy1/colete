@@ -92,7 +92,8 @@ CREATE TABLE IF NOT EXISTS public.parcels (
   appearance            text CHECK (appearance IN ('box', 'bag', 'envelope', 'other')),
   nr_bucati             smallint NOT NULL DEFAULT 1,
   payment_status        text NOT NULL DEFAULT 'cod'
-                        CHECK (payment_status IN ('paid', 'cod')),
+                        CHECK (payment_status IN ('paid', 'cod', 'transfer')),
+  transfer_recipient    text,
   cash_collected        boolean NOT NULL DEFAULT false,
   weight                real NOT NULL DEFAULT 0,
   price                 real NOT NULL DEFAULT 0,

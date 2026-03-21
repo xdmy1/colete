@@ -13,7 +13,8 @@ interface StepDetailsProps {
     receiver_details: ContactDetails
     content_description: string
     nr_bucati: number
-    payment_status: 'paid' | 'cod'
+    payment_status: 'paid' | 'cod' | 'transfer'
+    transfer_recipient?: string
     weight: number
     manual_price?: number
   }) => void
@@ -22,7 +23,8 @@ interface StepDetailsProps {
     receiver_details: ContactDetails
     content_description: string
     nr_bucati: number
-    payment_status: 'paid' | 'cod'
+    payment_status: 'paid' | 'cod' | 'transfer'
+    transfer_recipient?: string
     weight: number
     manual_price?: number
   }
@@ -129,7 +131,8 @@ export default function StepDetails({
   }))
   const [contentDesc, setContentDesc] = useState(initialData.content_description)
   const [nrBucati, setNrBucati] = useState(initialData.nr_bucati || 1)
-  const [paymentStatus, setPaymentStatus] = useState<'paid' | 'cod'>(initialData.payment_status || 'cod')
+  const [paymentStatus, setPaymentStatus] = useState<'paid' | 'cod' | 'transfer'>(initialData.payment_status || 'cod')
+  const [transferRecipient, setTransferRecipient] = useState(initialData.transfer_recipient || '')
   const [weight, setWeight] = useState(initialData.weight || 0)
   const [priceAuto, setPriceAuto] = useState(initialData.manual_price === undefined)
   const [manualPrice, setManualPrice] = useState(initialData.manual_price ?? 0)
@@ -157,6 +160,7 @@ export default function StepDetails({
       content_description: contentDesc,
       nr_bucati: nrBucati,
       payment_status: paymentStatus,
+      transfer_recipient: paymentStatus === 'transfer' ? transferRecipient : undefined,
       weight,
       manual_price: priceAuto ? undefined : manualPrice,
     })
@@ -323,11 +327,11 @@ export default function StepDetails({
       </div>
 
       {/* Plată */}
-      <div>
-        <label className="text-sm font-semibold text-slate-600 uppercase tracking-wide block mb-2">
+      <div className="space-y-3">
+        <label className="text-sm font-semibold text-slate-600 uppercase tracking-wide block">
           Plată
         </label>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <button
             type="button"
             onClick={() => setPaymentStatus('paid')}
@@ -348,9 +352,30 @@ export default function StepDetails({
                 : 'border-card-border text-slate-400 hover:border-red-300'
             }`}
           >
-            Achitare la livrare
+            La livrare
+          </button>
+          <button
+            type="button"
+            onClick={() => setPaymentStatus('transfer')}
+            className={`flex-1 py-3 rounded-xl font-bold text-sm border transition-all ${
+              paymentStatus === 'transfer'
+                ? 'bg-blue-50 border-blue-400 text-blue-700'
+                : 'border-card-border text-slate-400 hover:border-blue-300'
+            }`}
+          >
+            Transfer
           </button>
         </div>
+        {paymentStatus === 'transfer' && (
+          <input
+            type="text"
+            placeholder="Cui i s-a făcut transferul? *"
+            value={transferRecipient}
+            onChange={(e) => setTransferRecipient(e.target.value)}
+            className={inputCls}
+            autoFocus
+          />
+        )}
       </div>
 
       {/* Greutate + Preț */}

@@ -50,10 +50,14 @@ export default function StepConfirm({
         <SummaryRow label="Nr. bucăți" value={`${data.nr_bucati} buc.`} />
         <SummaryRow
           label="Plată"
-          value={data.payment_status === 'paid' ? 'Achitat' : 'Achitare la livrare'}
+          value={data.payment_status === 'paid' ? 'Achitat' : data.payment_status === 'transfer' ? 'Transfer' : 'Achitare la livrare'}
           highlight={data.payment_status === 'cod'}
           red={data.payment_status === 'cod'}
+          blue={data.payment_status === 'transfer'}
         />
+        {data.payment_status === 'transfer' && data.transfer_recipient && (
+          <SummaryRow label="Transfer către" value={data.transfer_recipient} />
+        )}
         <SummaryRow label="Greutate" value={`${data.weight} kg`} />
         <SummaryRow
           label="Preț"
@@ -79,18 +83,20 @@ function SummaryRow({
   value,
   highlight = false,
   red = false,
+  blue = false,
 }: {
   label: string
   value: string
   highlight?: boolean
   red?: boolean
+  blue?: boolean
 }) {
   return (
     <div className="flex justify-between items-center px-4 py-3">
       <span className="text-sm text-slate-400">{label}</span>
       <span
         className={`text-sm font-medium ${
-          red ? 'text-red-600 font-bold' : highlight ? 'text-emerald-700 text-base font-bold' : 'text-slate-800'
+          red ? 'text-red-600 font-bold' : blue ? 'text-blue-600 font-bold' : highlight ? 'text-emerald-700 text-base font-bold' : 'text-slate-800'
         }`}
       >
         {value}

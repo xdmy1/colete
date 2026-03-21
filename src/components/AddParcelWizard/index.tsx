@@ -55,7 +55,8 @@ export default function AddParcelWizard({
     receiver_details: ContactDetails
     content_description: string
     nr_bucati: number
-    payment_status: 'paid' | 'cod'
+    payment_status: 'paid' | 'cod' | 'transfer'
+    transfer_recipient?: string
     weight: number
     manual_price?: number
   }) {

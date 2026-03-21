@@ -45,7 +45,8 @@ export interface Parcel {
   photo_urls: string[]          // new (1-3 poze)
   route_order: number
   labels: string[]
-  payment_status: 'paid' | 'cod'
+  payment_status: 'paid' | 'cod' | 'transfer'
+  transfer_recipient: string | null
   cash_collected: boolean
   client_satisfied: boolean | null
   delivery_note: string | null
@@ -61,7 +62,8 @@ export interface NewParcelData {
   receiver_details: ContactDetails
   content_description: string
   nr_bucati: number
-  payment_status: 'paid' | 'cod'
+  payment_status: 'paid' | 'cod' | 'transfer'
+  transfer_recipient?: string
   weight: number
   manual_price?: number
   photos: File[]

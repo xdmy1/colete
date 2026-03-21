@@ -1,33 +1,52 @@
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Parcel } from '../lib/types'
 
-// Returneaza toate caile de poze ale unui colet (nou: photo_urls, legacy: photo_url)
+// Toate pozele unui colet (nou: photo_urls, legacy: photo_url)
 export function getParcelPhotoPaths(parcel: Parcel): string[] {
   if (parcel.photo_urls && parcel.photo_urls.length > 0) return parcel.photo_urls
   if (parcel.photo_url) return [parcel.photo_url]
   return []
 }
 
-// Public bucket — URL direct, zero latenta
-export function getPhotoUrl(photoPath: string | null): string | null {
+// Toate path-urile de sters cand se sterge un colet (incluse legacy)
+export function getParcelAllPhotoPaths(parcel: { photo_url?: string | null; photo_urls?: string[] }): string[] {
+  const paths = new Set<string>()
+  if (parcel.photo_urls) parcel.photo_urls.forEach((p) => paths.add(p))
+  if (parcel.photo_url) paths.add(parcel.photo_url)
+  return Array.from(paths)
+}
+
+// Signed URL — fresh per sesiune, fara CDN cache stale
+// Valabil 1h, React Query il tine 50min
+export function useSignedPhotoUrl(photoPath: string | null) {
+  return useQuery({
+    queryKey: ['photo-url', photoPath],
+    queryFn: async () => {
+      if (!photoPath) return null
+      const { data, error } = await supabase.storage
+        .from('parcels')
+        .createSignedUrl(photoPath, 3600)
+      if (error || !data) return null
+      return data.signedUrl
+    },
+    enabled: !!photoPath,
+    staleTime: 50 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+  })
+}
+
+// Sincron — doar pentru exportExcel (care face fetch oricum)
+export function getPublicPhotoUrl(photoPath: string | null): string | null {
   if (!photoPath) return null
   if (photoPath.startsWith('http')) return photoPath
   const { data } = supabase.storage.from('parcels').getPublicUrl(photoPath)
   return data.publicUrl
 }
 
-export function usePhotoUrl(photoPath: string | null): string | null {
-  return getPhotoUrl(photoPath)
-}
+// Backward compat alias
+export const getPhotoUrl = getPublicPhotoUrl
 
-// Preload: descarca imaginile in browser cache INAINTE ca userul sa apese
-// Se apeleaza cand lista de colete se incarca
-export function prefetchPhotoUrls(photoPaths: string[]) {
-  for (const path of photoPaths) {
-    if (!path) continue
-    const url = getPhotoUrl(path)
-    if (!url) continue
-    const img = new Image()
-    img.src = url
-  }
+export function prefetchPhotoUrls(_photoPaths: string[]) {
+  // Nu mai folosim prefetch public — signed URLs se incarca per component via React Query
 }

@@ -37,3 +37,9 @@ Alexandru Popa: 400-499 a->md, vede doar rute si cele atribuite cand adauga, ca 
 Mihai Calmic Universal: 700-799 a->md, vede doar rute si cele atribuite cand adauga, ca si restu
 
 Problema: Se intercaleaza pozele, de exemplu am sters un colet. Adauga catalin altul si are poza veche. pe telefonul lui ii arata poza mea veche care am adaugat o si deja am sters coletul. Se intercaleaza si arata pozele gresit.
+
+ apropo, este un label vechi cu aspect care arata cutie. sterge-l pentru ca in formularul de adaugare nu mai este asta. si redenumeste labelul de "descriere" cu
+  "aspect" si sa ramana asa un input unde se descrie comanda 
+
+  in loc de aspect -> nr de bucati
+  continut -> de scris de sofer

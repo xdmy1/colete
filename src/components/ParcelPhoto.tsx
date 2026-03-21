@@ -1,5 +1,15 @@
 import { useState, useRef } from 'react'
-import { getPhotoUrl } from '../hooks/usePhotoUrl'
+import { useSignedPhotoUrl } from '../hooks/usePhotoUrl'
+
+// Sub-component: o singura poza cu signed URL propriu
+function PhotoImage({ path, className }: { path: string; className: string }) {
+  const { data: url, isLoading } = useSignedPhotoUrl(path)
+
+  if (isLoading || !url) {
+    return <div className={className + ' bg-gray-100 animate-pulse'} />
+  }
+  return <img src={url} alt="Colet" className={className} loading="eager" />
+}
 
 interface ParcelPhotoProps {
   photoPaths: string[]
@@ -13,13 +23,12 @@ export default function ParcelPhoto({
   const [index, setIndex] = useState(0)
   const touchStartX = useRef<number | null>(null)
 
-  const urls = photoPaths.map(getPhotoUrl).filter(Boolean) as string[]
-  if (urls.length === 0) return null
+  if (photoPaths.length === 0) return null
 
-  const single = urls.length === 1
+  const single = photoPaths.length === 1
 
-  function prev() { setIndex((i) => (i - 1 + urls.length) % urls.length) }
-  function next() { setIndex((i) => (i + 1) % urls.length) }
+  function prev() { setIndex((i) => (i - 1 + photoPaths.length) % photoPaths.length) }
+  function next() { setIndex((i) => (i + 1) % photoPaths.length) }
 
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX
@@ -34,17 +43,10 @@ export default function ParcelPhoto({
 
   return (
     <div className="relative select-none" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      <img
-        key={urls[index]}
-        src={urls[index]}
-        alt={`Colet ${index + 1}`}
-        className={className}
-        loading="eager"
-      />
+      <PhotoImage path={photoPaths[index]} className={className} />
 
       {!single && (
         <>
-          {/* Arrows */}
           <button
             onClick={(e) => { e.stopPropagation(); prev() }}
             className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white hover:bg-black/60"
@@ -61,10 +63,8 @@ export default function ParcelPhoto({
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </button>
-
-          {/* Dots */}
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
-            {urls.map((_, i) => (
+            {photoPaths.map((_, i) => (
               <button
                 key={i}
                 onClick={(e) => { e.stopPropagation(); setIndex(i) }}

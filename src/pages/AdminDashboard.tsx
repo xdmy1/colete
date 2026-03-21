@@ -520,7 +520,8 @@ export default function AdminDashboard() {
             if (!confirm('Ești sigur că vrei să ștergi acest colet?')) return
             await deleteParcel.mutateAsync({
               parcelId: selectedParcel.id,
-              photoUrls: selectedParcel.photo_urls?.length ? selectedParcel.photo_urls : selectedParcel.photo_url ? [selectedParcel.photo_url] : [],
+              photoUrl: selectedParcel.photo_url,
+              photoUrls: selectedParcel.photo_urls,
             })
             setSelectedParcel(null)
           }}

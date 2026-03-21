@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Parcel, NewParcelData, Profile } from '../lib/types'
+import { getParcelAllPhotoPaths } from './usePhotoUrl'
 import {
   calculatePrice,
   getCurrency,
@@ -320,10 +321,11 @@ export function useDeleteParcel() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ parcelId, photoUrls }: { parcelId: string; photoUrls: string[] }) => {
-      // Sterge toate pozele din storage
-      if (photoUrls.length > 0) {
-        await supabase.storage.from('parcels').remove(photoUrls)
+    mutationFn: async ({ parcelId, photoUrl, photoUrls }: { parcelId: string; photoUrl?: string | null; photoUrls?: string[] }) => {
+      // Sterge TOATE pozele (nou + legacy) din storage
+      const allPaths = getParcelAllPhotoPaths({ photo_url: photoUrl, photo_urls: photoUrls })
+      if (allPaths.length > 0) {
+        await supabase.storage.from('parcels').remove(allPaths)
       }
 
       const { error } = await supabase

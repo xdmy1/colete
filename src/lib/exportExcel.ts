@@ -6,7 +6,8 @@ import { getPhotoUrl } from '../hooks/usePhotoUrl'
 export async function exportParcelsToExcel(
   parcels: Parcel[],
   getDriverName: (id: string) => string,
-  filename?: string
+  filename?: string,
+  includePhotos = true
 ) {
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet('Colete')
@@ -56,7 +57,7 @@ export async function exportParcelsToExcel(
       date:         new Date(p.created_at).toLocaleDateString('ro-RO'),
     })
 
-    const firstPhoto = p.photo_urls?.[0] ?? p.photo_url ?? null
+    const firstPhoto = includePhotos ? (p.photo_urls?.[0] ?? p.photo_url ?? null) : null
     if (firstPhoto) {
       try {
         const url = getPhotoUrl(firstPhoto)

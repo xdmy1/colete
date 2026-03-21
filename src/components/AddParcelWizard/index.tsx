@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { NewParcelData, ContactDetails } from '../../lib/types'
 import type { DestinationCode } from '../../lib/utils'
+import { getCurrentWeekId, weekIdParts } from '../../lib/utils'
 import StepDestination from './StepDestination'
 import StepDetails from './StepDetails'
 import StepPhoto from './StepPhoto'
@@ -74,6 +75,12 @@ export default function AddParcelWizard({
     <div className="flex flex-col min-h-screen bg-soft-bg">
       {/* Progress bar */}
       <div className="bg-white border-b border-card-border px-4 py-3 sticky top-0 z-30">
+        {(() => { const { label, range } = weekIdParts(getCurrentWeekId()); return (
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-bold text-slate-700">{label}</span>
+            <span className="text-xs text-slate-400">{range}</span>
+          </div>
+        )})()}
         <div className="flex items-center justify-between mb-2">
           <button
             onClick={step === 1 ? onCancel : () => setStep(step - 1)}

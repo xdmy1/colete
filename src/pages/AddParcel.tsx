@@ -91,9 +91,6 @@ export default function AddParcel() {
               onClick={() => setAdminSelectedDriver(driver.id)}
             >
               <span className="font-semibold">{driver.username}</span>
-              <span className="text-sm text-slate-400">
-                {driver.range_start}-{driver.range_end}
-              </span>
             </Button>
           ))}
         </div>

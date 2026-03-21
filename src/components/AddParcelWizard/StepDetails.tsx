@@ -28,6 +28,7 @@ const PHONE_PREFIX: Record<DestinationCode, string> = {
   UK: '+44 ',
   BE: '+32 ',
   NL: '+31 ',
+  DE: '+49 ',
 }
 
 function ContactAutocomplete({

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Parcel, NewParcelData, Profile, DriverRouteRange } from '../lib/types'
+import type { Parcel, NewParcelData, Profile } from '../lib/types'
 import {
   calculatePrice,
   getCurrency,

@@ -77,18 +77,22 @@ function AddressAutocomplete({
       setLoading(true)
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5&accept-language=ro`,
-          { headers: { 'User-Agent': 'colete-app' } }
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&limit=5&lang=ro`
         )
         const data = await res.json()
-        setSuggestions(data.map((item: { display_name: string }) => item.display_name))
+        const results: string[] = (data.features || []).map((f: { properties: Record<string, string> }) => {
+          const p = f.properties
+          return [p.name, p.street && p.housenumber ? `${p.street} ${p.housenumber}` : p.street, p.city || p.town || p.village, p.country]
+            .filter(Boolean).join(', ')
+        })
+        setSuggestions(results)
         setOpen(true)
       } catch {
         setSuggestions([])
       } finally {
         setLoading(false)
       }
-    }, 400)
+    }, 300)
   }
 
   return (

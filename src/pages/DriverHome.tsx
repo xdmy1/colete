@@ -425,10 +425,8 @@ function ParcelCard({
 
         {/* Waze navigation button */}
         <a
-          href={`https://waze.com/ul?q=${encodeURIComponent(parcel.receiver_details.address)}&navigate=yes`}
+          href={`waze://ul?q=${encodeURIComponent(parcel.receiver_details.address)}&navigate=yes`}
           onClick={(e) => e.stopPropagation()}
-          target="_blank"
-          rel="noopener noreferrer"
           className={`flex items-center justify-center w-12 transition-colors border-l ${
             isDelivered
               ? 'border-pill-green-border/60 bg-blue-50/60 text-blue-400 hover:bg-blue-50 active:bg-blue-100'

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { compressImage } from '../../lib/compressImage'
 import Button from '../ui/Button'
 
@@ -12,12 +12,11 @@ interface StepPhotoProps {
 
 export default function StepPhoto({ photos, onChange, onComplete }: StepPhotoProps) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [inputKey, setInputKey] = useState(0)
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
-    setInputKey((k) => k + 1) // force input remount → clears camera cache
+    e.target.value = ''
 
     const remaining = MAX_PHOTOS - photos.length
     const toProcess = files.slice(0, remaining)
@@ -91,7 +90,6 @@ export default function StepPhoto({ photos, onChange, onComplete }: StepPhotoPro
       </Button>
 
       <input
-        key={inputKey}
         ref={inputRef}
         type="file"
         accept="image/*"

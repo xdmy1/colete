@@ -1,17 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Parcel, NewParcelData, Profile } from '../lib/types'
-import { getParcelAllPhotoPaths } from './usePhotoUrl'
+import { getParcelAllPhotoPaths, batchPrefetchSignedUrls } from './usePhotoUrl'
 import {
   calculatePrice,
   getCurrency,
   buildHumanId,
   getCurrentWeekId,
 } from '../lib/utils'
-import { prefetchPhotoUrls } from './usePhotoUrl'
 
 // Coletele active (nearhivate) ale unui sofer
 export function useDriverParcels(driverId: string | undefined) {
+  const queryClient = useQueryClient()
   return useQuery({
     queryKey: ['parcels', 'driver', driverId],
     queryFn: async () => {
@@ -25,9 +25,8 @@ export function useDriverParcels(driverId: string | undefined) {
 
       if (error) throw error
       const parcels = data as Parcel[]
-      // Pre-fetch toate signed URL-urile in batch (1 request)
       const photoPaths = parcels.flatMap((p) => p.photo_urls?.length ? p.photo_urls : p.photo_url ? [p.photo_url] : [])
-      if (photoPaths.length > 0) prefetchPhotoUrls(photoPaths)
+      batchPrefetchSignedUrls(queryClient, photoPaths)
       return parcels
     },
     enabled: !!driverId,
@@ -36,6 +35,7 @@ export function useDriverParcels(driverId: string | undefined) {
 
 // ADMIN: toate coletele active (de la toti soferii)
 export function useAllParcels() {
+  const queryClient = useQueryClient()
   return useQuery({
     queryKey: ['parcels', 'all'],
     queryFn: async () => {
@@ -47,6 +47,8 @@ export function useAllParcels() {
 
       if (error) throw error
       const parcels = data as Parcel[]
+      const photoPaths = parcels.flatMap((p) => p.photo_urls?.length ? p.photo_urls : p.photo_url ? [p.photo_url] : [])
+      batchPrefetchSignedUrls(queryClient, photoPaths)
       return parcels
     },
   })
@@ -298,6 +300,7 @@ export function useUpdateParcel() {
 
 // ADMIN: archived parcels (grouped by week)
 export function useArchivedParcels() {
+  const queryClient = useQueryClient()
   return useQuery({
     queryKey: ['parcels', 'archived'],
     queryFn: async () => {
@@ -310,7 +313,7 @@ export function useArchivedParcels() {
       if (error) throw error
       const parcels = data as Parcel[]
       const photoPaths = parcels.flatMap((p) => p.photo_urls?.length ? p.photo_urls : p.photo_url ? [p.photo_url] : [])
-      if (photoPaths.length > 0) prefetchPhotoUrls(photoPaths)
+      batchPrefetchSignedUrls(queryClient, photoPaths)
       return parcels
     },
   })

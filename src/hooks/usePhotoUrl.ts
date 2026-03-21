@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Parcel } from '../lib/types'
 
@@ -36,6 +37,30 @@ export function useSignedPhotoUrl(photoPath: string | null) {
   })
 }
 
+// Batch prefetch: un singur request pentru toate pozele din lista
+// Apelat din useDriverParcels / useAllParcels dupa ce vin datele
+export async function batchPrefetchSignedUrls(queryClient: QueryClient, photoPaths: string[]) {
+  if (photoPaths.length === 0) return
+
+  // Filtreaza doar path-urile care nu sunt deja in cache
+  const missing = photoPaths.filter((p) => {
+    const cached = queryClient.getQueryData(['photo-url', p])
+    return cached === undefined
+  })
+  if (missing.length === 0) return
+
+  const { data } = await supabase.storage
+    .from('parcels')
+    .createSignedUrls(missing, 3600)
+
+  if (!data) return
+  for (const item of data) {
+    if (item.signedUrl && !item.error) {
+      queryClient.setQueryData(['photo-url', item.path], item.signedUrl)
+    }
+  }
+}
+
 // Sincron — doar pentru exportExcel (care face fetch oricum)
 export function getPublicPhotoUrl(photoPath: string | null): string | null {
   if (!photoPath) return null
@@ -48,5 +73,5 @@ export function getPublicPhotoUrl(photoPath: string | null): string | null {
 export const getPhotoUrl = getPublicPhotoUrl
 
 export function prefetchPhotoUrls(_photoPaths: string[]) {
-  // Nu mai folosim prefetch public — signed URLs se incarca per component via React Query
+  // no-op — inlocuit cu batchPrefetchSignedUrls
 }

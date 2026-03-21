@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useArchivedParcels, useAllDrivers } from '../hooks/useParcels'
-import { formatPrice, getDestLabel, weekIdToDateRange } from '../lib/utils'
+import { formatPrice, getDestLabel, weekIdToDateRange, weekIdParts } from '../lib/utils'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
@@ -69,9 +69,10 @@ export default function Archive() {
           className="px-4 py-2 rounded-full border border-card-border bg-white text-sm font-medium text-slate-600 focus:outline-none focus:ring-1 focus:ring-pill-green-border shrink-0"
         >
           <option value="all">Toate săptămânile</option>
-          {weeks.map((w) => (
-            <option key={w} value={w}>{weekIdToDateRange(w)}</option>
-          ))}
+          {weeks.map((w) => {
+            const { label, range } = weekIdParts(w)
+            return <option key={w} value={w}>{label} ({range})</option>
+          })}
         </select>
       </div>
 
@@ -95,9 +96,17 @@ export default function Archive() {
       ) : (
         groupedByWeek.map(([weekId, weekParcels]) => (
           <section key={weekId} className="mb-6">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5 px-0.5">
-              {weekIdToDateRange(weekId)} ({weekParcels.length})
-            </h2>
+            <div className="flex items-baseline gap-2 mb-2.5 px-0.5">
+              <h2 className="text-base font-extrabold text-slate-800">
+                {weekIdParts(weekId).label}
+              </h2>
+              <span className="text-xs text-slate-400 font-medium">
+                {weekIdParts(weekId).range}
+              </span>
+              <span className="text-xs text-slate-400 ml-auto">
+                {weekParcels.length} colete
+              </span>
+            </div>
             <div className="space-y-2.5">
               {weekParcels.map((parcel) => (
                 <button

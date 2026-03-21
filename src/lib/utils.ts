@@ -78,25 +78,38 @@ export function getCurrentWeekId(): string {
   return `${d.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`
 }
 
-// Converteste "2026-W07" → "Săptămâna 09.02.2026 – 15.02.2026"
-export function weekIdToDateRange(weekId: string): string {
+function weekIdToMonday(weekId: string): Date | null {
   const match = weekId.match(/^(\d{4})-W(\d{2})$/)
-  if (!match) return weekId
-
+  if (!match) return null
   const year = parseInt(match[1])
   const week = parseInt(match[2])
-
-  // ISO 8601: saptamana 1 contine 4 ianuarie
   const jan4 = new Date(year, 0, 4)
-  const dayOfWeek = jan4.getDay() || 7 // luni=1, duminica=7
+  const dayOfWeek = jan4.getDay() || 7
   const monday = new Date(jan4)
   monday.setDate(jan4.getDate() - dayOfWeek + 1 + (week - 1) * 7)
+  return monday
+}
 
+// "2026-W12" → { label: "Săptămâna 12 · 2026", range: "17 Mar – 23 Mar" }
+export function weekIdParts(weekId: string): { label: string; range: string } {
+  const match = weekId.match(/^(\d{4})-W(\d{2})$/)
+  if (!match) return { label: weekId, range: '' }
+  const year = match[1]
+  const week = parseInt(match[2])
+  const monday = weekIdToMonday(weekId)
+  if (!monday) return { label: weekId, range: '' }
   const sunday = new Date(monday)
   sunday.setDate(monday.getDate() + 6)
+  const months = ['Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const fmt = (d: Date) => `${d.getDate()} ${months[d.getMonth()]}`
+  return {
+    label: `Săptămâna ${week} · ${year}`,
+    range: `${fmt(monday)} – ${fmt(sunday)}`,
+  }
+}
 
-  const fmt = (d: Date) =>
-    `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`
-
-  return `Săptămâna ${fmt(monday)} – ${fmt(sunday)}`
+// Backward compat
+export function weekIdToDateRange(weekId: string): string {
+  const { label, range } = weekIdParts(weekId)
+  return range ? `${label} (${range})` : label
 }

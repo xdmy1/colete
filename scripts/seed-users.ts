@@ -88,6 +88,11 @@ const USERS: {
     role: 'driver',
     routes: [
       { origin: 'UK', destination: 'MD', range_start: 100, range_end: 199 },
+      // Alta destinatie [1000-1099]
+      ...MD_OUT.map(dest => ({ origin: 'MD', destination: dest, range_start: 1000, range_end: 1099 })),
+      { origin: 'BE', destination: 'MD', range_start: 1000, range_end: 1099 },
+      { origin: 'NL', destination: 'MD', range_start: 1000, range_end: 1099 },
+      { origin: 'DE', destination: 'MD', range_start: 1000, range_end: 1099 },
     ],
   },
   {
@@ -210,7 +215,7 @@ async function seed() {
   console.log('   stelian              → PIN: 3535  MD→* [350-399]')
   console.log('   ghenadie             → PIN: 4004  MD→BE [400-449]  BE→MD [450-499]')
   console.log('   iurie_caraman        → PIN: 0199  UK→MD [1-99]')
-  console.log('   rosca_alex           → PIN: 1001  UK→MD [100-199]')
+  console.log('   rosca_alex           → PIN: 1001  UK→MD [100-199]  *↔MD [1000-1099]')
   console.log('   ion_universal        → PIN: 2200  UK→MD [200-299]')
   console.log('   alexandru_popa       → PIN: 4400  UK→MD [400-499]')
   console.log('   mihai_calmic         → PIN: 7700  UK→MD [700-799]')

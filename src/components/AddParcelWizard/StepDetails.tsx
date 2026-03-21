@@ -38,102 +38,6 @@ const PHONE_PREFIX: Record<DestinationCode, string> = {
   DE: '+49 ',
 }
 
-function AddressAutocomplete({
-  placeholder,
-  value,
-  onChange,
-  inputCls,
-}: {
-  placeholder: string
-  value: string
-  onChange: (val: string) => void
-  inputCls: string
-}) {
-  const [suggestions, setSuggestions] = useState<string[]>([])
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const wrapperRef = useRef<HTMLDivElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  function handleChange(val: string) {
-    onChange(val)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (val.trim().length < 3) {
-      setSuggestions([])
-      setOpen(false)
-      return
-    }
-    debounceRef.current = setTimeout(async () => {
-      setLoading(true)
-      try {
-        const res = await fetch(
-          `https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&limit=5&lang=ro`
-        )
-        const data = await res.json()
-        const results: string[] = (data.features || []).map((f: { properties: Record<string, string> }) => {
-          const p = f.properties
-          return [p.name, p.street && p.housenumber ? `${p.street} ${p.housenumber}` : p.street, p.city || p.town || p.village, p.country]
-            .filter(Boolean).join(', ')
-        })
-        setSuggestions(results)
-        setOpen(true)
-      } catch {
-        setSuggestions([])
-      } finally {
-        setLoading(false)
-      }
-    }, 300)
-  }
-
-  return (
-    <div ref={wrapperRef} className="relative">
-      <input
-        type="text"
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => handleChange(e.target.value)}
-        onFocus={() => suggestions.length > 0 && setOpen(true)}
-        className={inputCls}
-      />
-      {loading && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-          <svg className="w-4 h-4 animate-spin text-slate-300" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-          </svg>
-        </div>
-      )}
-      {open && suggestions.length > 0 && (
-        <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-card-border rounded-xl shadow-lg overflow-hidden">
-          {suggestions.map((suggestion, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => {
-                onChange(suggestion)
-                setOpen(false)
-                setSuggestions([])
-              }}
-              className="w-full text-left px-4 py-2.5 hover:bg-pill-green-bg/50 transition-colors border-b border-card-border last:border-b-0"
-            >
-              <span className="text-sm text-slate-700">{suggestion}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 function ContactAutocomplete({
   placeholder,
@@ -373,11 +277,12 @@ export default function StepDetails({
           onChange={(e) => setReceiver({ ...receiver, phone: e.target.value })}
           className={inputCls}
         />
-        <AddressAutocomplete
+        <input
+          type="text"
           placeholder="Adresa destinatar *"
           value={receiver.address}
-          onChange={(val) => setReceiver({ ...receiver, address: val })}
-          inputCls={inputCls}
+          onChange={(e) => setReceiver({ ...receiver, address: e.target.value })}
+          className={inputCls}
         />
       </fieldset>
 

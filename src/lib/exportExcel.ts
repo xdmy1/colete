@@ -1,46 +1,93 @@
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import type { Parcel } from './types'
 import { getDestLabel, formatPrice } from './utils'
+import { getPhotoUrl } from '../hooks/usePhotoUrl'
 
-export function exportParcelsToExcel(
+export async function exportParcelsToExcel(
   parcels: Parcel[],
   getDriverName: (id: string) => string,
   filename?: string
 ) {
-  const rows = parcels.map((p) => ({
-    'ID': p.human_id,
-    'Ruta': `${getDestLabel(p.origin_code)} → ${getDestLabel(p.delivery_destination)}`,
-    'Expeditor': p.sender_details.name,
-    'Tel. Expeditor': p.sender_details.phone,
-    'Adresa Expeditor': p.sender_details.address,
-    'Destinatar': p.receiver_details.name,
-    'Tel. Destinatar': p.receiver_details.phone,
-    'Adresa Destinatar': p.receiver_details.address,
-    'Conținut': p.content_description || '',
-    'Greutate (kg)': p.weight,
-    'Preț': formatPrice(p.price, p.currency),
-    'Șofer': getDriverName(p.driver_id),
-    'Status': p.status === 'delivered' ? 'Livrat' : 'Activ',
-    'Client mulțumit': p.client_satisfied === null ? '' : p.client_satisfied ? 'Da' : 'Nu',
-    'Mențiuni': p.delivery_note || '',
-    'Data': new Date(p.created_at).toLocaleDateString('ro-RO'),
-  }))
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet('Colete')
 
-  const ws = XLSX.utils.json_to_sheet(rows)
+  sheet.columns = [
+    { header: 'ID',               key: 'id',           width: 10 },
+    { header: 'Foto',             key: 'photo',         width: 14 },
+    { header: 'Ruta',             key: 'route',         width: 22 },
+    { header: 'Expeditor',        key: 'sender',        width: 22 },
+    { header: 'Tel. Expeditor',   key: 'senderPhone',   width: 15 },
+    { header: 'Adresa Expeditor', key: 'senderAddr',    width: 28 },
+    { header: 'Destinatar',       key: 'receiver',      width: 22 },
+    { header: 'Tel. Destinatar',  key: 'receiverPhone', width: 15 },
+    { header: 'Adresa Destinatar',key: 'receiverAddr',  width: 28 },
+    { header: 'Conținut',         key: 'content',       width: 20 },
+    { header: 'Greutate (kg)',    key: 'weight',        width: 13 },
+    { header: 'Preț',             key: 'price',         width: 10 },
+    { header: 'Șofer',            key: 'driver',        width: 18 },
+    { header: 'Status',           key: 'status',        width: 10 },
+    { header: 'Client mulțumit',  key: 'satisfied',     width: 15 },
+    { header: 'Mențiuni',         key: 'notes',         width: 22 },
+    { header: 'Data',             key: 'date',          width: 12 },
+  ]
 
-  // Auto-size columns
-  const colWidths = Object.keys(rows[0] || {}).map((key) => {
-    const maxLen = Math.max(
-      key.length,
-      ...rows.map((r) => String(r[key as keyof typeof r] || '').length)
-    )
-    return { wch: Math.min(maxLen + 2, 40) }
+  sheet.getRow(1).font = { bold: true }
+
+  for (let i = 0; i < parcels.length; i++) {
+    const p = parcels[i]
+
+    sheet.addRow({
+      id:           p.human_id,
+      photo:        '',
+      route:        `${getDestLabel(p.origin_code)} → ${getDestLabel(p.delivery_destination)}`,
+      sender:       p.sender_details.name,
+      senderPhone:  p.sender_details.phone,
+      senderAddr:   p.sender_details.address,
+      receiver:     p.receiver_details.name,
+      receiverPhone:p.receiver_details.phone,
+      receiverAddr: p.receiver_details.address,
+      content:      p.content_description || '',
+      weight:       p.weight,
+      price:        formatPrice(p.price, p.currency),
+      driver:       getDriverName(p.driver_id),
+      status:       p.status === 'delivered' ? 'Livrat' : 'Activ',
+      satisfied:    p.client_satisfied == null ? '' : p.client_satisfied ? 'Da' : 'Nu',
+      notes:        p.delivery_note || '',
+      date:         new Date(p.created_at).toLocaleDateString('ro-RO'),
+    })
+
+    if (p.photo_url) {
+      try {
+        const url = getPhotoUrl(p.photo_url)
+        if (url) {
+          const resp = await fetch(url)
+          const buffer = await resp.arrayBuffer()
+          const ext = p.photo_url.toLowerCase().endsWith('.png') ? 'png' : 'jpeg'
+
+          const imageId = workbook.addImage({ buffer, extension: ext })
+
+          // tl row/col are 0-based; row i+1 skips header row
+          sheet.addImage(imageId, {
+            tl: { col: 1, row: i + 1 },
+            ext: { width: 90, height: 90 },
+            editAs: 'oneCell',
+          })
+
+          sheet.getRow(i + 2).height = 70
+        }
+      } catch {
+        // skip if image unavailable
+      }
+    }
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   })
-  ws['!cols'] = colWidths
-
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Colete')
-
-  const name = filename || `colete_${new Date().toISOString().slice(0, 10)}.xlsx`
-  XLSX.writeFile(wb, name)
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = filename || `colete_${new Date().toISOString().slice(0, 10)}.xlsx`
+  link.click()
+  URL.revokeObjectURL(link.href)
 }

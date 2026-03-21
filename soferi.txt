@@ -29,3 +29,4 @@ Catalin, repartizare_germania, repartizare_olanda - vad doar x->md
 
 Eroare: Could not find the function public.get_next_numeric_id(p_delivery_destination, p_driver_id, p_origin_code, p_week_id) in the schema cache
 
+

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useArchivedParcels, useAllDrivers } from '../hooks/useParcels'
-import { formatPrice, getDestLabel, weekIdToDateRange, weekIdParts } from '../lib/utils'
+import { formatPrice, getDestLabel, weekIdParts } from '../lib/utils'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'

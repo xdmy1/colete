@@ -150,6 +150,7 @@ export function useAddParcel(driverId: string) {
         receiver_details: parcelData.receiver_details,
         content_description: parcelData.content_description || null,
         nr_bucati: parcelData.nr_bucati,
+        payment_status: parcelData.payment_status,
         weight: parcelData.weight,
         price,
         currency,
@@ -353,10 +354,12 @@ export function useMarkDelivered(_driverId: string) {
       parcelId,
       clientSatisfied,
       deliveryNote,
+      cashCollected,
     }: {
       parcelId: string
       clientSatisfied: boolean
       deliveryNote?: string
+      cashCollected?: boolean
     }) => {
       const { error } = await supabase
         .from('parcels')
@@ -364,6 +367,7 @@ export function useMarkDelivered(_driverId: string) {
           status: 'delivered',
           client_satisfied: clientSatisfied,
           delivery_note: deliveryNote || null,
+          cash_collected: cashCollected ?? false,
           delivered_at: new Date().toISOString(),
         })
         .eq('id', parcelId)

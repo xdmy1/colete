@@ -862,6 +862,9 @@ function AdminParcelModal({
                 )}
                 <p className="text-xs text-slate-500">Greutate: {parcel.weight} kg</p>
                 <p className="text-xs text-slate-500">Bucăți: {parcel.nr_bucati ?? 1}</p>
+                <p className="text-xs font-semibold" style={{ color: parcel.payment_status === 'paid' ? '#059669' : '#dc2626' }}>
+                  {parcel.payment_status === 'paid' ? '✓ Achitat' : 'Achitare la livrare'}
+                </p>
               </div>
 
               {parcel.status === 'delivered' && (

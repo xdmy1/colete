@@ -13,6 +13,7 @@ interface StepDetailsProps {
     receiver_details: ContactDetails
     content_description: string
     nr_bucati: number
+    payment_status: 'paid' | 'cod'
     weight: number
     manual_price?: number
   }) => void
@@ -21,6 +22,7 @@ interface StepDetailsProps {
     receiver_details: ContactDetails
     content_description: string
     nr_bucati: number
+    payment_status: 'paid' | 'cod'
     weight: number
     manual_price?: number
   }
@@ -127,6 +129,7 @@ export default function StepDetails({
   }))
   const [contentDesc, setContentDesc] = useState(initialData.content_description)
   const [nrBucati, setNrBucati] = useState(initialData.nr_bucati || 1)
+  const [paymentStatus, setPaymentStatus] = useState<'paid' | 'cod'>(initialData.payment_status || 'cod')
   const [weight, setWeight] = useState(initialData.weight || 0)
   const [priceAuto, setPriceAuto] = useState(initialData.manual_price === undefined)
   const [manualPrice, setManualPrice] = useState(initialData.manual_price ?? 0)
@@ -153,6 +156,7 @@ export default function StepDetails({
       receiver_details: receiver,
       content_description: contentDesc,
       nr_bucati: nrBucati,
+      payment_status: paymentStatus,
       weight,
       manual_price: priceAuto ? undefined : manualPrice,
     })
@@ -315,6 +319,37 @@ export default function StepDetails({
             +
           </button>
           <span className="text-sm text-slate-400 ml-1">buc.</span>
+        </div>
+      </div>
+
+      {/* Plată */}
+      <div>
+        <label className="text-sm font-semibold text-slate-600 uppercase tracking-wide block mb-2">
+          Plată
+        </label>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => setPaymentStatus('paid')}
+            className={`flex-1 py-3 rounded-xl font-bold text-sm border transition-all ${
+              paymentStatus === 'paid'
+                ? 'bg-emerald-50 border-emerald-400 text-emerald-700'
+                : 'border-card-border text-slate-400 hover:border-emerald-300'
+            }`}
+          >
+            ✓ Achitat
+          </button>
+          <button
+            type="button"
+            onClick={() => setPaymentStatus('cod')}
+            className={`flex-1 py-3 rounded-xl font-bold text-sm border transition-all ${
+              paymentStatus === 'cod'
+                ? 'bg-red-50 border-red-400 text-red-700'
+                : 'border-card-border text-slate-400 hover:border-red-300'
+            }`}
+          >
+            Achitare la livrare
+          </button>
         </div>
       </div>
 

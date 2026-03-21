@@ -30,6 +30,7 @@ export default function DriverHome() {
     null
   )
   const [feedbackNote, setFeedbackNote] = useState('')
+  const [cashCollected, setCashCollected] = useState(false)
 
   const activeParcels = parcels?.filter((p) => p.status === 'pending') || []
   const deliveredParcels =
@@ -46,12 +47,14 @@ export default function DriverHome() {
       parcelId: selectedParcel.id,
       clientSatisfied: feedbackSatisfied,
       deliveryNote: feedbackNote || undefined,
+      cashCollected,
     })
 
     setSelectedParcel(null)
     setShowFeedback(false)
     setFeedbackSatisfied(null)
     setFeedbackNote('')
+    setCashCollected(false)
   }
 
   return (
@@ -183,6 +186,18 @@ export default function DriverHome() {
               </button>
             </div>
 
+            {selectedParcel.payment_status === 'cod' && (
+              <label className="flex items-center gap-3 px-4 py-3.5 rounded-2xl border border-card-border cursor-pointer select-none hover:bg-gray-50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={cashCollected}
+                  onChange={(e) => setCashCollected(e.target.checked)}
+                  className="w-5 h-5 accent-emerald-600 rounded"
+                />
+                <span className="text-base font-semibold text-slate-700">S-a achitat</span>
+              </label>
+            )}
+
             <textarea
               placeholder="Notă opțională..."
               value={feedbackNote}
@@ -276,7 +291,7 @@ function ParcelCard({
             {parcel.receiver_details.address}
           </p>
 
-          {/* Row 4: Weight + Price */}
+          {/* Row 4: Weight + Price + Payment */}
           <div className="flex items-center gap-3 mt-2">
             <span className="text-xs font-medium text-slate-400">
               {parcel.weight} kg
@@ -284,6 +299,17 @@ function ParcelCard({
             <span className="text-sm font-bold text-emerald-700">
               {formatPrice(parcel.price, parcel.currency)}
             </span>
+            {(parcel.payment_status === 'paid' || !parcel.payment_status) ? (
+              parcel.payment_status === 'paid' && (
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-300">
+                  Achitat
+                </span>
+              )
+            ) : (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-bold border border-red-300">
+                La livrare
+              </span>
+            )}
           </div>
         </button>
 

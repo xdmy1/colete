@@ -29,6 +29,7 @@ export default function AddParcelWizard({
     receiver_details: { ...emptyContact },
     content_description: '',
     nr_bucati: 1,
+    payment_status: 'cod' as const,
     weight: 0,
     photos: [],
   })
@@ -53,6 +54,7 @@ export default function AddParcelWizard({
     receiver_details: ContactDetails
     content_description: string
     nr_bucati: number
+    payment_status: 'paid' | 'cod'
     weight: number
     manual_price?: number
   }) {

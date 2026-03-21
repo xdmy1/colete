@@ -32,10 +32,19 @@ export default function DriverHome() {
   const [feedbackNote, setFeedbackNote] = useState('')
   const [cashCollected, setCashCollected] = useState(false)
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'cod'>('all')
+  const [routeFilter, setRouteFilter] = useState<string>('all')
 
-  const activeParcels = parcels?.filter((p) => p.status === 'pending') || []
-  const deliveredParcels =
-    parcels?.filter((p) => p.status === 'delivered') || []
+  const allActive = parcels?.filter((p) => p.status === 'pending') || []
+  const deliveredParcels = parcels?.filter((p) => p.status === 'delivered') || []
+
+  // Rute unice din coletele active
+  const uniqueRoutes = Array.from(
+    new Map(allActive.map(p => [`${p.origin_code}-${p.delivery_destination}`, { origin: p.origin_code, destination: p.delivery_destination }])).values()
+  )
+  const hasMultipleRoutes = uniqueRoutes.length > 1
+
+  const activeParcels = allActive
+    .filter(p => routeFilter === 'all' || `${p.origin_code}-${p.delivery_destination}` === routeFilter)
 
   function handleMarkDelivered() {
     setShowFeedback(true)
@@ -87,6 +96,38 @@ export default function DriverHome() {
               <p className="text-xs font-semibold text-emerald-600/70 uppercase tracking-wide">Livrate</p>
             </div>
           </div>
+
+          {/* Route filter — doar daca sunt mai multe rute */}
+          {hasMultipleRoutes && (
+            <div className="flex gap-2 mb-3 flex-wrap">
+              <button
+                onClick={() => setRouteFilter('all')}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                  routeFilter === 'all'
+                    ? 'bg-slate-800 border-slate-800 text-white'
+                    : 'bg-white border-card-border text-slate-400 hover:border-slate-300'
+                }`}
+              >
+                Toate
+              </button>
+              {uniqueRoutes.map(r => {
+                const key = `${r.origin}-${r.destination}`
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setRouteFilter(key)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                      routeFilter === key
+                        ? 'bg-blue-50 border-blue-400 text-blue-700'
+                        : 'bg-white border-card-border text-slate-400 hover:border-blue-300'
+                    }`}
+                  >
+                    {getDestLabel(r.origin)} → {getDestLabel(r.destination)}
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
           {/* Payment filter */}
           <div className="flex gap-2 mb-4">
@@ -327,17 +368,15 @@ function ParcelCard({
             <span className="text-sm font-bold text-emerald-700">
               {formatPrice(parcel.price, parcel.currency)}
             </span>
-            {(parcel.payment_status === 'paid' || !parcel.payment_status) ? (
-              parcel.payment_status === 'paid' && (
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-300">
-                  Achitat
-                </span>
-              )
-            ) : (
+            {(parcel.payment_status === 'paid' || parcel.cash_collected) ? (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-300">
+                Achitat
+              </span>
+            ) : parcel.payment_status === 'cod' ? (
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-bold border border-red-300">
                 La livrare
               </span>
-            )}
+            ) : null}
           </div>
         </button>
 

@@ -36,7 +36,8 @@ export interface Parcel {
   sender_details: ContactDetails
   receiver_details: ContactDetails
   content_description: string | null
-  appearance: 'box' | 'bag' | 'envelope' | 'other' | null
+  appearance: 'box' | 'bag' | 'envelope' | 'other' | null  // legacy, nu mai folosit
+  nr_bucati: number
   weight: number
   price: number
   currency: 'GBP' | 'EUR'
@@ -57,7 +58,8 @@ export interface NewParcelData {
   sender_details: ContactDetails
   receiver_details: ContactDetails
   content_description: string
-  appearance: 'box' | 'bag' | 'envelope' | 'other'
+  nr_bucati: number
   weight: number
+  manual_price?: number  // setat doar cand AUTO e debifat
   photos: File[]
 }

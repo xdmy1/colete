@@ -28,7 +28,7 @@ export default function AddParcelWizard({
     sender_details: { ...emptyContact },
     receiver_details: { ...emptyContact },
     content_description: '',
-    appearance: 'box',
+    nr_bucati: 1,
     weight: 0,
     photos: [],
   })
@@ -52,8 +52,9 @@ export default function AddParcelWizard({
     sender_details: ContactDetails
     receiver_details: ContactDetails
     content_description: string
-    appearance: 'box' | 'bag' | 'envelope' | 'other'
+    nr_bucati: number
     weight: number
+    manual_price?: number
   }) {
     updateData(details)
     setStep(3)

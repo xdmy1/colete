@@ -400,22 +400,14 @@ function ParcelDetailModal({
               </p>
             </div>
             <div className="rounded-2xl p-3 text-center border border-card-border">
-              <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Aspect</p>
-              <p className="text-base font-bold text-slate-800">
-                {parcel.appearance === 'box'
-                  ? 'Cutie'
-                  : parcel.appearance === 'bag'
-                    ? 'Sac'
-                    : parcel.appearance === 'envelope'
-                      ? 'Plic'
-                      : 'Altul'}
-              </p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Bucăți</p>
+              <p className="text-base font-bold text-slate-800">{parcel.nr_bucati ?? 1}</p>
             </div>
           </div>
 
           {parcel.content_description && (
             <div className="bg-pill-orange-bg rounded-2xl p-3.5 border border-pill-orange-border">
-              <p className="text-[10px] font-bold text-amber-600 uppercase mb-0.5">Conținut</p>
+              <p className="text-[10px] font-bold text-amber-600 uppercase mb-0.5">Aspect</p>
               <p className="text-sm text-slate-700">{parcel.content_description}</p>
             </div>
           )}

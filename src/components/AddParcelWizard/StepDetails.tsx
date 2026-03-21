@@ -12,14 +12,17 @@ interface StepDetailsProps {
     sender_details: ContactDetails
     receiver_details: ContactDetails
     content_description: string
-    appearance: 'box' | 'bag' | 'envelope' | 'other'
+    nr_bucati: number
     weight: number
+    manual_price?: number
   }) => void
   initialData: {
     sender_details: ContactDetails
     receiver_details: ContactDetails
     content_description: string
+    nr_bucati: number
     weight: number
+    manual_price?: number
   }
 }
 
@@ -123,12 +126,16 @@ export default function StepDetails({
     phone: initialData.receiver_details.phone || PHONE_PREFIX[deliveryDestination],
   }))
   const [contentDesc, setContentDesc] = useState(initialData.content_description)
+  const [nrBucati, setNrBucati] = useState(initialData.nr_bucati || 1)
   const [weight, setWeight] = useState(initialData.weight || 0)
+  const [priceAuto, setPriceAuto] = useState(initialData.manual_price === undefined)
+  const [manualPrice, setManualPrice] = useState(initialData.manual_price ?? 0)
 
   const { data: contacts = [] } = useContacts()
 
   const currency = getCurrency(originCode, deliveryDestination)
-  const price = calculatePrice(weight)
+  const autoPrice = calculatePrice(weight)
+  const displayPrice = priceAuto ? autoPrice : manualPrice
 
   const isValid =
     sender.name.trim() &&
@@ -144,8 +151,9 @@ export default function StepDetails({
       sender_details: sender,
       receiver_details: receiver,
       content_description: contentDesc,
-      appearance: 'box',
+      nr_bucati: nrBucati,
       weight,
+      manual_price: priceAuto ? undefined : manualPrice,
     })
   }
 
@@ -213,21 +221,48 @@ export default function StepDetails({
         />
       </fieldset>
 
-      {/* Continut */}
+      {/* Aspect (descriere comanda) */}
       <div>
         <label className="text-sm font-semibold text-slate-600 uppercase tracking-wide block mb-2">
-          Conținut
+          Aspect
         </label>
         <input
           type="text"
-          placeholder="Descriere conținut (ex: haine, documente)"
+          placeholder="Descrie coletul (ex: haine, documente)"
           value={contentDesc}
           onChange={(e) => setContentDesc(e.target.value)}
           className={inputCls}
         />
       </div>
 
-      {/* Greutate + Pret Auto */}
+      {/* Nr de bucăți */}
+      <div>
+        <label className="text-sm font-semibold text-slate-600 uppercase tracking-wide block mb-2">
+          Nr de bucăți
+        </label>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setNrBucati((n) => Math.max(1, n - 1))}
+            className="w-11 h-11 rounded-xl border border-card-border flex items-center justify-center text-xl font-bold text-slate-600 hover:bg-gray-50 active:bg-gray-100 transition-colors select-none"
+          >
+            −
+          </button>
+          <span className="text-2xl font-extrabold text-slate-800 min-w-[2.5rem] text-center">
+            {nrBucati}
+          </span>
+          <button
+            type="button"
+            onClick={() => setNrBucati((n) => n + 1)}
+            className="w-11 h-11 rounded-xl border border-card-border flex items-center justify-center text-xl font-bold text-slate-600 hover:bg-gray-50 active:bg-gray-100 transition-colors select-none"
+          >
+            +
+          </button>
+          <span className="text-sm text-slate-400 ml-1">buc.</span>
+        </div>
+      </div>
+
+      {/* Greutate + Preț */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-semibold text-slate-600 uppercase tracking-wide block mb-2">
@@ -244,12 +279,39 @@ export default function StepDetails({
           />
         </div>
         <div>
-          <label className="text-sm font-semibold text-slate-600 uppercase tracking-wide block mb-2">
-            Preț (auto)
-          </label>
-          <div className="w-full px-4 py-3 rounded-xl bg-pill-green-bg border border-pill-green-border text-lg font-semibold text-slate-700">
-            {weight > 0 ? formatPrice(price, currency) : '—'}
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
+              Preț
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={priceAuto}
+                onChange={(e) => {
+                  setPriceAuto(e.target.checked)
+                  if (e.target.checked) setManualPrice(0)
+                  else setManualPrice(autoPrice)
+                }}
+                className="w-3.5 h-3.5 accent-emerald-600"
+              />
+              <span className="text-xs font-semibold text-emerald-700">AUTO</span>
+            </label>
           </div>
+          {priceAuto ? (
+            <div className="w-full px-4 py-3 rounded-xl bg-pill-green-bg border border-pill-green-border text-lg font-semibold text-slate-700">
+              {weight > 0 ? formatPrice(displayPrice, currency) : '—'}
+            </div>
+          ) : (
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              placeholder="0"
+              value={manualPrice || ''}
+              onChange={(e) => setManualPrice(parseFloat(e.target.value) || 0)}
+              className={inputCls}
+            />
+          )}
         </div>
       </div>
 

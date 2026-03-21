@@ -112,7 +112,7 @@ export function useAddParcel(driverId: string) {
 
       const numericId = nextId as number
       const humanId = buildHumanId(parcelData.origin_code, parcelData.delivery_destination, numericId)
-      const price = calculatePrice(parcelData.weight)
+      const price = parcelData.manual_price ?? calculatePrice(parcelData.weight)
       const currency = getCurrency(parcelData.origin_code, parcelData.delivery_destination)
 
       // 2. Upload poze (1-3) — fiecare cu UUID unic ca nume de fisier
@@ -147,7 +147,7 @@ export function useAddParcel(driverId: string) {
         sender_details: parcelData.sender_details,
         receiver_details: parcelData.receiver_details,
         content_description: parcelData.content_description || null,
-        appearance: parcelData.appearance,
+        nr_bucati: parcelData.nr_bucati,
         weight: parcelData.weight,
         price,
         currency,

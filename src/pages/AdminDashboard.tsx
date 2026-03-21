@@ -858,10 +858,10 @@ function AdminParcelModal({
               <div className="rounded-2xl p-4 space-y-1.5 border border-card-border">
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Detalii</h3>
                 {parcel.content_description && (
-                  <p className="text-xs text-slate-500">Conținut: {parcel.content_description}</p>
+                  <p className="text-xs text-slate-500">Aspect: {parcel.content_description}</p>
                 )}
                 <p className="text-xs text-slate-500">Greutate: {parcel.weight} kg</p>
-                <p className="text-xs text-slate-500">Aspect: {parcel.appearance || '—'}</p>
+                <p className="text-xs text-slate-500">Bucăți: {parcel.nr_bucati ?? 1}</p>
               </div>
 
               {parcel.status === 'delivered' && (

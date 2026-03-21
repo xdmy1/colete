@@ -14,7 +14,7 @@ export default function StepConfirm({
   isSubmitting,
 }: StepConfirmProps) {
   const currency = getCurrency(data.origin_code, data.delivery_destination)
-  const price = calculatePrice(data.weight)
+  const price = data.manual_price ?? calculatePrice(data.weight)
 
   return (
     <div className="space-y-5">
@@ -47,6 +47,7 @@ export default function StepConfirm({
         {data.content_description && (
           <SummaryRow label="Conținut" value={data.content_description} />
         )}
+        <SummaryRow label="Nr. bucăți" value={`${data.nr_bucati} buc.`} />
         <SummaryRow label="Greutate" value={`${data.weight} kg`} />
         <SummaryRow
           label="Preț"

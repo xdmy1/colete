@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS public.parcels (
   receiver_details      jsonb NOT NULL DEFAULT '{}'::jsonb,
   content_description   text,
   appearance            text CHECK (appearance IN ('box', 'bag', 'envelope', 'other')),
+  nr_bucati             smallint NOT NULL DEFAULT 1,
   weight                real NOT NULL DEFAULT 0,
   price                 real NOT NULL DEFAULT 0,
   currency              text NOT NULL DEFAULT 'GBP'

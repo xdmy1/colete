@@ -130,6 +130,7 @@ export default function StepDetails({
   const [weight, setWeight] = useState(initialData.weight || 0)
   const [priceAuto, setPriceAuto] = useState(initialData.manual_price === undefined)
   const [manualPrice, setManualPrice] = useState(initialData.manual_price ?? 0)
+  const [locLoading, setLocLoading] = useState(false)
 
   const { data: contacts = [] } = useContacts()
 
@@ -155,6 +156,40 @@ export default function StepDetails({
       weight,
       manual_price: priceAuto ? undefined : manualPrice,
     })
+  }
+
+  async function fillLocation() {
+    if (!navigator.geolocation) return
+    setLocLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ro`,
+            { headers: { 'User-Agent': 'colete-app' } }
+          )
+          const json = await res.json()
+          const a = json.address || {}
+          const parts = [
+            a.road || a.pedestrian || a.footway,
+            a.house_number,
+            a.village || a.town || a.city || a.municipality,
+            a.county,
+            a.country,
+          ].filter(Boolean)
+          const address = parts.length > 0 ? parts.join(', ') : json.display_name
+          setSender((s) => ({ ...s, address }))
+        } catch {
+          // fallback: doar coordonate
+          setSender((s) => ({ ...s, address: `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}` }))
+        } finally {
+          setLocLoading(false)
+        }
+      },
+      () => setLocLoading(false),
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
   }
 
   const inputCls = 'w-full px-4 py-3 rounded-xl border border-card-border text-base focus:outline-none focus:ring-1 focus:ring-pill-green-border focus:border-pill-green-border transition-colors'
@@ -183,13 +218,34 @@ export default function StepDetails({
           onChange={(e) => setSender({ ...sender, phone: e.target.value })}
           className={inputCls}
         />
-        <input
-          type="text"
-          placeholder="Adresa expeditor"
-          value={sender.address}
-          onChange={(e) => setSender({ ...sender, address: e.target.value })}
-          className={inputCls}
-        />
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Adresa expeditor"
+            value={sender.address}
+            onChange={(e) => setSender({ ...sender, address: e.target.value })}
+            className={inputCls}
+          />
+          <button
+            type="button"
+            onClick={fillLocation}
+            disabled={locLoading}
+            title="Folosește locația mea"
+            className="flex-shrink-0 w-12 h-12 rounded-xl border border-card-border flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:border-pill-green-border transition-colors disabled:opacity-50"
+          >
+            {locLoading ? (
+              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.134 2 5 5.134 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.866-3.134-7-7-7z" />
+                <circle cx="12" cy="9" r="2.5" fill="currentColor" stroke="none" />
+              </svg>
+            )}
+          </button>
+        </div>
       </fieldset>
 
       {/* Destinatar */}

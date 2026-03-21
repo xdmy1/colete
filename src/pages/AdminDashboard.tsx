@@ -483,9 +483,6 @@ export default function AdminDashboard() {
                   <span className="text-base font-bold text-slate-800">
                     {driver.username}
                   </span>
-                  <span className="ml-2 text-sm text-slate-400">
-                    ({driver.range_start}-{driver.range_end})
-                  </span>
                 </button>
               ))}
             </div>

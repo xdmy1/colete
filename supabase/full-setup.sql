@@ -7,15 +7,38 @@
 -- 1. PROFILES TABLE
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.profiles (
-  id          uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  username    text NOT NULL UNIQUE,
-  pin_code    text NOT NULL,
-  range_start int NOT NULL DEFAULT 0,
-  range_end   int NOT NULL DEFAULT 100,
-  role        text NOT NULL DEFAULT 'driver'
-              CHECK (role IN ('admin', 'driver')),
-  created_at  timestamptz NOT NULL DEFAULT now()
+  id         uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  username   text NOT NULL UNIQUE,
+  pin_code   text NOT NULL,
+  role       text NOT NULL DEFAULT 'driver'
+             CHECK (role IN ('admin', 'driver')),
+  created_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- Range-uri per sofer per ruta (origine → destinatie)
+CREATE TABLE IF NOT EXISTS public.driver_route_ranges (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  driver_id   uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  origin      text NOT NULL,
+  destination text NOT NULL,
+  range_start int NOT NULL,
+  range_end   int NOT NULL,
+  UNIQUE (driver_id, origin, destination)
+);
+
+ALTER TABLE public.driver_route_ranges ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "route_ranges_select" ON public.driver_route_ranges;
+  DROP POLICY IF EXISTS "route_ranges_admin_all" ON public.driver_route_ranges;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "route_ranges_select" ON public.driver_route_ranges
+  FOR SELECT USING (true);
+
+CREATE POLICY "route_ranges_admin_all" ON public.driver_route_ranges
+  FOR ALL USING (public.is_admin());
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
@@ -60,9 +83,9 @@ CREATE TABLE IF NOT EXISTS public.parcels (
                         CHECK (status IN ('pending', 'delivered')),
   is_archived           boolean NOT NULL DEFAULT false,
   origin_code           text NOT NULL
-                        CHECK (origin_code IN ('UK', 'BE', 'NL', 'MD')),
+                        CHECK (origin_code IN ('UK', 'BE', 'NL', 'MD', 'DE')),
   delivery_destination  text NOT NULL
-                        CHECK (delivery_destination IN ('UK', 'BE', 'NL', 'MD')),
+                        CHECK (delivery_destination IN ('UK', 'BE', 'NL', 'MD', 'DE')),
   sender_details        jsonb NOT NULL DEFAULT '{}'::jsonb,
   receiver_details      jsonb NOT NULL DEFAULT '{}'::jsonb,
   content_description   text,
@@ -87,7 +110,7 @@ CREATE INDEX IF NOT EXISTS idx_parcels_archived ON public.parcels(is_archived);
 CREATE INDEX IF NOT EXISTS idx_parcels_delivery ON public.parcels(delivery_destination);
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_parcels_unique_number
-  ON public.parcels(driver_id, week_id, numeric_id)
+  ON public.parcels(driver_id, week_id, origin_code, delivery_destination, numeric_id)
   WHERE is_archived = false;
 
 ALTER TABLE public.parcels ENABLE ROW LEVEL SECURITY;
@@ -124,47 +147,67 @@ AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_next_numeric_id(
-  p_driver_id uuid,
-  p_week_id text
+  p_driver_id            uuid,
+  p_week_id              text,
+  p_origin_code          text,
+  p_delivery_destination text
 )
 RETURNS int
 LANGUAGE plpgsql
 AS $$
 DECLARE
   v_range_start int;
-  v_range_end int;
-  v_max_used int;
+  v_range_end   int;
+  v_max_used    int;
 BEGIN
   SELECT range_start, range_end INTO v_range_start, v_range_end
-  FROM public.profiles
-  WHERE id = p_driver_id;
+  FROM public.driver_route_ranges
+  WHERE driver_id   = p_driver_id
+    AND origin      = p_origin_code
+    AND destination = p_delivery_destination;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Sofer negasit: %', p_driver_id;
+    RAISE EXCEPTION 'Range negasit pentru soferul % pe ruta %→%',
+      p_driver_id, p_origin_code, p_delivery_destination;
   END IF;
 
-  SELECT COALESCE(MAX(numeric_id), v_range_start) INTO v_max_used
+  SELECT COALESCE(MAX(numeric_id), v_range_start - 1) INTO v_max_used
   FROM public.parcels
-  WHERE driver_id = p_driver_id
-    AND week_id = p_week_id
+  WHERE driver_id          = p_driver_id
+    AND week_id            = p_week_id
+    AND origin_code        = p_origin_code
+    AND delivery_destination = p_delivery_destination
     AND numeric_id >= v_range_start
-    AND numeric_id < v_range_end;
+    AND numeric_id <  v_range_end;
 
   RETURN v_max_used + 1;
 END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.build_human_id(
+  p_origin_code          text,
   p_delivery_destination text,
-  p_numeric_id int
+  p_numeric_id           int
 )
 RETURNS text
 LANGUAGE sql IMMUTABLE
 AS $$
-  SELECT CASE p_delivery_destination
-    WHEN 'BE' THEN 'B' || p_numeric_id::text
-    WHEN 'NL' THEN 'OL' || p_numeric_id::text
-    ELSE p_numeric_id::text
+  -- Prefixul = tara "straina" (non-MD) din ruta
+  SELECT CASE
+    WHEN p_delivery_destination != 'MD' THEN
+      CASE p_delivery_destination
+        WHEN 'BE' THEN 'B'  || p_numeric_id::text
+        WHEN 'NL' THEN 'OL' || p_numeric_id::text
+        WHEN 'DE' THEN 'D'  || p_numeric_id::text
+        ELSE p_numeric_id::text
+      END
+    ELSE
+      CASE p_origin_code
+        WHEN 'BE' THEN 'B'  || p_numeric_id::text
+        WHEN 'NL' THEN 'OL' || p_numeric_id::text
+        WHEN 'DE' THEN 'D'  || p_numeric_id::text
+        ELSE p_numeric_id::text
+      END
   END;
 $$;
 
@@ -233,7 +276,7 @@ $$;
 --   File size limit: 10MB
 --   MIME types: image/jpeg, image/png, image/webp
 -- ============================================================
-
+ç√√∫˜µ≤¬˙©ƒ©©©©©
 -- ============================================================
 -- 8. SEED USERS
 -- NOTA: Userii trebuie creati prin Supabase Auth API (seed-users.ts)

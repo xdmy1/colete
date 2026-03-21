@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { useAddParcel, useAllDrivers } from '../hooks/useParcels'
+import { useAddParcel, useAllDrivers, useDriverRoutes } from '../hooks/useParcels'
 import type { NewParcelData } from '../lib/types'
+import { ROUTES, getDestLabel } from '../lib/utils'
+import type { DestinationCode } from '../lib/utils'
 import AddParcelWizard from '../components/AddParcelWizard'
 import Button from '../components/ui/Button'
 
@@ -14,6 +16,14 @@ export default function AddParcel() {
   const [adminSelectedDriver, setAdminSelectedDriver] = useState<string | null>(null)
 
   const effectiveDriverId = isAdmin ? adminSelectedDriver : profile?.id || null
+
+  const { data: driverRouteRanges } = useDriverRoutes(effectiveDriverId || undefined)
+  const availableRoutes = driverRouteRanges && driverRouteRanges.length > 0
+    ? driverRouteRanges.map(r =>
+        ROUTES.find(rt => rt.origin === r.origin && rt.destination === r.destination)
+        ?? { origin: r.origin as DestinationCode, destination: r.destination as DestinationCode, label: `${getDestLabel(r.origin)} → ${getDestLabel(r.destination)}` }
+      )
+    : ROUTES
 
   const { data: drivers } = useAllDrivers()
   const addParcel = useAddParcel(effectiveDriverId || '')
@@ -96,6 +106,7 @@ export default function AddParcel() {
       onComplete={handleComplete}
       onCancel={() => navigate('/')}
       isSubmitting={addParcel.isPending}
+      routes={availableRoutes}
     />
   )
 }

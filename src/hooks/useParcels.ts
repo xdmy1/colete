@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Parcel, NewParcelData, Profile } from '../lib/types'
+import type { Parcel, NewParcelData, Profile, DriverRouteRange } from '../lib/types'
 import {
   calculatePrice,
   getCurrency,
@@ -64,11 +64,28 @@ export function useAllDrivers() {
         .from('profiles')
         .select('*')
         .eq('role', 'driver')
-        .order('range_start', { ascending: true })
+        .order('username', { ascending: true })
 
       if (error) throw error
       return data as Profile[]
     },
+  })
+}
+
+// Rutele disponibile ale unui sofer (din driver_route_ranges)
+export function useDriverRoutes(driverId: string | undefined) {
+  return useQuery({
+    queryKey: ['driver-routes', driverId],
+    queryFn: async () => {
+      if (!driverId) return []
+      const { data, error } = await supabase
+        .from('driver_route_ranges')
+        .select('origin, destination')
+        .eq('driver_id', driverId)
+      if (error) throw error
+      return data as { origin: string; destination: string }[]
+    },
+    enabled: !!driverId,
   })
 }
 
@@ -86,6 +103,8 @@ export function useAddParcel(driverId: string) {
         {
           p_driver_id: driverId,
           p_week_id: weekId,
+          p_origin_code: parcelData.origin_code,
+          p_delivery_destination: parcelData.delivery_destination,
         }
       )
 
@@ -95,7 +114,7 @@ export function useAddParcel(driverId: string) {
       }
 
       const numericId = nextId as number
-      const humanId = buildHumanId(parcelData.delivery_destination, numericId)
+      const humanId = buildHumanId(parcelData.origin_code, parcelData.delivery_destination, numericId)
       const price = calculatePrice(parcelData.weight)
       const currency = getCurrency(parcelData.origin_code, parcelData.delivery_destination)
 

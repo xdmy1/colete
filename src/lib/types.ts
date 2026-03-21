@@ -4,10 +4,17 @@ export interface Profile {
   id: string
   username: string
   pin_code: string
-  range_start: number
-  range_end: number
   role: 'admin' | 'driver'
   created_at: string
+}
+
+export interface DriverRouteRange {
+  id: string
+  driver_id: string
+  origin: string
+  destination: string
+  range_start: number
+  range_end: number
 }
 
 export interface ContactDetails {

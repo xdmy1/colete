@@ -1,0 +1,31 @@
+Eugen Nord 1
+Ilie Nord 2
+Oficiu
+Gheorghe Sud 1
+Stelian Sud 2
+acestia doar md-> , fara x->md
+
+
+
+Catalin
+Repartizare Germania -
+Repartizare Olanda
+
+
+
+export - si poze
+
+
+
+Din moldova care stang pachete: Depozit 600-699, Ghenadie Cahul 400-499, Eugen Nord 100-199, Ilie Nord 900-999, Oficiu 1-99, Gheorghe Sud 300-349, Stelian Sud 350-399.
+Catalin: Belgia - Repartizeaza si colecteaza inapoi: B100-199
+Repartizare Germania - Repartizeaza si colecteaza inapoi: D500-599 (El va apasa la adaugare D sau OL si coletul cu asta se va incepe)
+Repartizare Olanda - Repartizeaza si colecteaza inapoi: OL200-299 (El va apasa la adaugare D sau OL si coletul cu asta se va incepe)
+
+Ghenadie strange de la cahul cu 400-499. el duce in belgia. de acolo strange iar colete si adauga, cum sa facem sa inceapa iar de la 400? avem o problema. spre exemplu cei din anglia strang colete duminica care tot incep cu 400-499, sau de exemplu cei din x pot sa se intercaleze cu 1-99 cand strang de undeva sa aduca in moldova. propune niste solutii
+
+Catalin, repartizare_germania, repartizare_olanda - vad doar x->md
+
+
+Eroare: Could not find the function public.get_next_numeric_id(p_delivery_destination, p_driver_id, p_origin_code, p_week_id) in the schema cache
+

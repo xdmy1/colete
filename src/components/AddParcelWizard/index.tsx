@@ -10,6 +10,7 @@ interface AddParcelWizardProps {
   onComplete: (data: NewParcelData) => void
   onCancel: () => void
   isSubmitting: boolean
+  routes: { origin: DestinationCode; destination: DestinationCode; label: string }[]
 }
 
 const emptyContact: ContactDetails = { name: '', phone: '', address: '' }
@@ -18,6 +19,7 @@ export default function AddParcelWizard({
   onComplete,
   onCancel,
   isSubmitting,
+  routes,
 }: AddParcelWizardProps) {
   const [step, setStep] = useState(1)
   const [data, setData] = useState<NewParcelData>({
@@ -110,7 +112,7 @@ export default function AddParcelWizard({
       {/* Step content */}
       <div className="flex-1 p-4">
         {step === 1 && (
-          <StepDestination onSelect={handleDestinationSelect} />
+          <StepDestination onSelect={handleDestinationSelect} routes={routes} />
         )}
         {step === 2 && (
           <StepDetails

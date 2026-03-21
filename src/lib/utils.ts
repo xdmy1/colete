@@ -1,12 +1,13 @@
 // ── Destination types & prefixes ──
 
-export type DestinationCode = 'UK' | 'BE' | 'NL' | 'MD'
+export type DestinationCode = 'UK' | 'BE' | 'NL' | 'MD' | 'DE'
 
 export const DESTINATIONS = [
   { code: 'UK' as DestinationCode, label: 'Anglia', shortLabel: 'A' },
   { code: 'BE' as DestinationCode, label: 'Belgia', shortLabel: 'B' },
   { code: 'NL' as DestinationCode, label: 'Olanda', shortLabel: 'OL' },
   { code: 'MD' as DestinationCode, label: 'Moldova', shortLabel: 'MD' },
+  { code: 'DE' as DestinationCode, label: 'Germania', shortLabel: 'D' },
 ]
 
 // Toate rutele posibile — butoane directe, fara ambiguitate
@@ -14,9 +15,11 @@ export const ROUTES: { origin: DestinationCode; destination: DestinationCode; la
   { origin: 'MD', destination: 'UK', label: 'Moldova → Anglia' },
   { origin: 'MD', destination: 'BE', label: 'Moldova → Belgia' },
   { origin: 'MD', destination: 'NL', label: 'Moldova → Olanda' },
+  { origin: 'MD', destination: 'DE', label: 'Moldova → Germania' },
   { origin: 'UK', destination: 'MD', label: 'Anglia → Moldova' },
   { origin: 'BE', destination: 'MD', label: 'Belgia → Moldova' },
   { origin: 'NL', destination: 'MD', label: 'Olanda → Moldova' },
+  { origin: 'DE', destination: 'MD', label: 'Germania → Moldova' },
 ]
 
 export function getDestLabel(code: string) {
@@ -28,17 +31,19 @@ export function getDestLabel(code: string) {
 // BE → BN    (B + numar)
 // NL → OLN   (OL + numar)
 // MD → N     (doar numarul)
+// Prefixul se bazeaza pe tara "straina" (non-MD) din ruta,
+// indiferent daca e origine sau destinatie
 export function buildHumanId(
+  originCode: DestinationCode,
   deliveryDestination: DestinationCode,
   numericId: number
 ): string {
-  switch (deliveryDestination) {
-    case 'BE':
-      return `B${numericId}`
-    case 'NL':
-      return `OL${numericId}`
-    default:
-      return `${numericId}`
+  const foreignCountry = deliveryDestination !== 'MD' ? deliveryDestination : originCode
+  switch (foreignCountry) {
+    case 'BE': return `B${numericId}`
+    case 'NL': return `OL${numericId}`
+    case 'DE': return `D${numericId}`
+    default:   return `${numericId}`
   }
 }
 

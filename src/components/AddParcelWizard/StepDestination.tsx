@@ -1,15 +1,15 @@
 import type { DestinationCode } from '../../lib/utils'
-import { ROUTES } from '../../lib/utils'
 import Button from '../ui/Button'
 
 interface StepDestinationProps {
   onSelect: (origin: DestinationCode, deliveryDest: DestinationCode) => void
+  routes: { origin: DestinationCode; destination: DestinationCode; label: string }[]
 }
 
-export default function StepDestination({ onSelect }: StepDestinationProps) {
+export default function StepDestination({ onSelect, routes }: StepDestinationProps) {
   return (
     <div className="grid grid-cols-1 gap-2.5 pt-4">
-      {ROUTES.map((route) => (
+      {routes.map((route) => (
         <Button
           key={`${route.origin}-${route.destination}`}
           variant="destination"

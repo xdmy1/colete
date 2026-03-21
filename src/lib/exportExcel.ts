@@ -56,13 +56,14 @@ export async function exportParcelsToExcel(
       date:         new Date(p.created_at).toLocaleDateString('ro-RO'),
     })
 
-    if (p.photo_url) {
+    const firstPhoto = p.photo_urls?.[0] ?? p.photo_url ?? null
+    if (firstPhoto) {
       try {
-        const url = getPhotoUrl(p.photo_url)
+        const url = getPhotoUrl(firstPhoto)
         if (url) {
           const resp = await fetch(url)
           const buffer = await resp.arrayBuffer()
-          const ext = p.photo_url.toLowerCase().endsWith('.png') ? 'png' : 'jpeg'
+          const ext = firstPhoto.toLowerCase().endsWith('.png') ? 'png' : 'jpeg'
 
           const imageId = workbook.addImage({ buffer, extension: ext })
 

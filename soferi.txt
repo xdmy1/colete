@@ -30,3 +30,10 @@ Catalin, repartizare_germania, repartizare_olanda - vad doar x->md
 Eroare: Could not find the function public.get_next_numeric_id(p_delivery_destination, p_driver_id, p_origin_code, p_week_id) in the schema cache
 
 
+Iurie Caraman: 1-99 Din anglia spre moldova, nu trebuie sa vada alte rute. vede doar ce i se atribuie lui. daca are el coletul 1 A->MD si i se atribuie de la oficiu 1 MD->A, ele sa poata coexista pentru ca au rute diferite
+Rosca Alexandru Nord1: Colecteaza din anglia->md colete 100-199, trebuie sa vada doar A->MD si rutele atribuite
+Ion Universal: 200-299 anglia->md, vede doar ruta si cele atribuite cand adauga, ca si restu
+Alexandru Popa: 400-499 a->md, vede doar rute si cele atribuite cand adauga, ca si restu
+Mihai Calmic Universal: 700-799 a->md, vede doar rute si cele atribuite cand adauga, ca si restu
+
+Problema: Se intercaleaza pozele, de exemplu am sters un colet. Adauga catalin altul si are poza veche. pe telefonul lui ii arata poza mea veche care am adaugat o si deja am sters coletul. Se intercaleaza si arata pozele gresit.

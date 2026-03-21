@@ -30,7 +30,7 @@ export default function AddParcelWizard({
     content_description: '',
     appearance: 'box',
     weight: 0,
-    photo: null,
+    photos: [],
   })
 
   const totalSteps = 4
@@ -59,8 +59,7 @@ export default function AddParcelWizard({
     setStep(3)
   }
 
-  function handlePhotoComplete(photo: File) {
-    updateData({ photo })
+  function handlePhotosComplete() {
     setStep(4)
   }
 
@@ -122,7 +121,13 @@ export default function AddParcelWizard({
             initialData={data}
           />
         )}
-        {step === 3 && <StepPhoto onComplete={handlePhotoComplete} />}
+        {step === 3 && (
+          <StepPhoto
+            photos={data.photos}
+            onChange={(photos) => updateData({ photos })}
+            onComplete={handlePhotosComplete}
+          />
+        )}
         {step === 4 && (
           <StepConfirm
             data={data}

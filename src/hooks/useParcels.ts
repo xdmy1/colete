@@ -7,7 +7,6 @@ import {
   buildHumanId,
   getCurrentWeekId,
 } from '../lib/utils'
-import { compressImage } from '../lib/compressImage'
 import { prefetchPhotoUrls } from './usePhotoUrl'
 
 // Coletele active (nearhivate) ale unui sofer
@@ -26,7 +25,7 @@ export function useDriverParcels(driverId: string | undefined) {
       if (error) throw error
       const parcels = data as Parcel[]
       // Pre-fetch toate signed URL-urile in batch (1 request)
-      const photoPaths = parcels.map((p) => p.photo_url).filter(Boolean) as string[]
+      const photoPaths = parcels.flatMap((p) => p.photo_urls?.length ? p.photo_urls : p.photo_url ? [p.photo_url] : [])
       if (photoPaths.length > 0) prefetchPhotoUrls(photoPaths)
       return parcels
     },
@@ -47,9 +46,6 @@ export function useAllParcels() {
 
       if (error) throw error
       const parcels = data as Parcel[]
-      // Pre-fetch toate signed URL-urile in batch (1 request)
-      const photoPaths = parcels.map((p) => p.photo_url).filter(Boolean) as string[]
-      if (photoPaths.length > 0) prefetchPhotoUrls(photoPaths)
       return parcels
     },
   })
@@ -118,18 +114,13 @@ export function useAddParcel(driverId: string) {
       const price = calculatePrice(parcelData.weight)
       const currency = getCurrency(parcelData.origin_code, parcelData.delivery_destination)
 
-      // 2. Upload poza — compresata daca e prea mare
-      // Folosim un UUID pre-generat ca parcel ID si ca nume de fisier
-      // asa fiecare colet are o poza unica, fara coliziuni
+      // 2. Upload poze (1-3) — fiecare cu UUID unic ca nume de fisier
       const parcelId = crypto.randomUUID()
-      let photoUrl: string | null = null
-      if (parcelData.photo) {
-        const photo = parcelData.photo.size > 200_000
-          ? await compressImage(parcelData.photo)
-          : parcelData.photo
-        const filePath = `${driverId}/${weekId}/${parcelId}.jpg`
+      const photoUrls: string[] = []
 
-        console.log('[ADD] uploading photo:', filePath, 'size:', photo.size)
+      for (let i = 0; i < parcelData.photos.length; i++) {
+        const photo = parcelData.photos[i]
+        const filePath = `${driverId}/${weekId}/${parcelId}_${i + 1}.jpg`
 
         const { error: uploadError } = await supabase.storage
           .from('parcels')
@@ -140,7 +131,7 @@ export function useAddParcel(driverId: string) {
           throw uploadError
         }
 
-        photoUrl = filePath
+        photoUrls.push(filePath)
       }
 
       // 3. Insert colet
@@ -159,7 +150,8 @@ export function useAddParcel(driverId: string) {
         weight: parcelData.weight,
         price,
         currency,
-        photo_url: photoUrl,
+        photo_url: photoUrls[0] ?? null,
+        photo_urls: photoUrls,
         labels: [],
       }
 
@@ -316,7 +308,7 @@ export function useArchivedParcels() {
 
       if (error) throw error
       const parcels = data as Parcel[]
-      const photoPaths = parcels.map((p) => p.photo_url).filter(Boolean) as string[]
+      const photoPaths = parcels.flatMap((p) => p.photo_urls?.length ? p.photo_urls : p.photo_url ? [p.photo_url] : [])
       if (photoPaths.length > 0) prefetchPhotoUrls(photoPaths)
       return parcels
     },
@@ -328,10 +320,10 @@ export function useDeleteParcel() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ parcelId, photoUrl }: { parcelId: string; photoUrl: string | null }) => {
-      // Sterge poza din storage inainte de a sterge coletul
-      if (photoUrl) {
-        await supabase.storage.from('parcels').remove([photoUrl])
+    mutationFn: async ({ parcelId, photoUrls }: { parcelId: string; photoUrls: string[] }) => {
+      // Sterge toate pozele din storage
+      if (photoUrls.length > 0) {
+        await supabase.storage.from('parcels').remove(photoUrls)
       }
 
       const { error } = await supabase

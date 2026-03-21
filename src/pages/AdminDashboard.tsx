@@ -518,7 +518,10 @@ export default function AdminDashboard() {
           }}
           onDelete={async () => {
             if (!confirm('Ești sigur că vrei să ștergi acest colet?')) return
-            await deleteParcel.mutateAsync({ parcelId: selectedParcel.id, photoUrl: selectedParcel.photo_url ?? null })
+            await deleteParcel.mutateAsync({
+              parcelId: selectedParcel.id,
+              photoUrls: selectedParcel.photo_urls?.length ? selectedParcel.photo_urls : selectedParcel.photo_url ? [selectedParcel.photo_url] : [],
+            })
             setSelectedParcel(null)
           }}
           isSaving={updateParcel.isPending}
@@ -761,9 +764,9 @@ function AdminParcelModal({
 
         <div className="px-5 py-4 space-y-4">
           {/* Photo */}
-          {parcel.photo_url && (
+          {(parcel.photo_urls?.length || parcel.photo_url) && (
             <div className="rounded-2xl overflow-hidden border border-card-border">
-              <ParcelPhoto photoPath={parcel.photo_url} className="w-full max-h-48 object-cover" />
+              <ParcelPhoto photoPaths={parcel.photo_urls?.length ? parcel.photo_urls : parcel.photo_url ? [parcel.photo_url] : []} className="w-full max-h-48 object-cover" />
             </div>
           )}
 

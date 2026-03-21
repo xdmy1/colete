@@ -94,7 +94,8 @@ CREATE TABLE IF NOT EXISTS public.parcels (
   price                 real NOT NULL DEFAULT 0,
   currency              text NOT NULL DEFAULT 'GBP'
                         CHECK (currency IN ('GBP', 'EUR')),
-  photo_url             text,
+  photo_url             text,                        -- legacy (o singura poza)
+  photo_urls            text[] NOT NULL DEFAULT '{}', -- nou (1-3 poze)
   route_order           int NOT NULL DEFAULT 0,
   labels                text[] DEFAULT '{}',
   client_satisfied      boolean,

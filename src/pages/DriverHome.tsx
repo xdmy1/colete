@@ -346,7 +346,7 @@ function ParcelDetailModal({
         </div>
 
         {/* Photo */}
-        <ParcelPhoto photoPath={parcel.photo_url} className="w-full max-h-72 object-cover" />
+        <ParcelPhoto photoPaths={parcel.photo_urls?.length ? parcel.photo_urls : parcel.photo_url ? [parcel.photo_url] : []} className="w-full max-h-72 object-cover" />
 
         {/* Content */}
         <div className="p-5 space-y-4">

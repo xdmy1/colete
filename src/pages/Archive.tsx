@@ -170,9 +170,9 @@ export default function Archive() {
               </button>
             </div>
             <div className="px-5 py-4 space-y-3">
-              {selectedParcel.photo_url && (
+              {(selectedParcel.photo_urls?.length || selectedParcel.photo_url) && (
                 <div className="rounded-2xl overflow-hidden border border-card-border">
-                  <ParcelPhoto photoPath={selectedParcel.photo_url} className="w-full max-h-48 object-cover" />
+                  <ParcelPhoto photoPaths={selectedParcel.photo_urls?.length ? selectedParcel.photo_urls : selectedParcel.photo_url ? [selectedParcel.photo_url] : []} className="w-full max-h-48 object-cover" />
                 </div>
               )}
 

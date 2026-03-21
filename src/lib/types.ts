@@ -40,7 +40,8 @@ export interface Parcel {
   weight: number
   price: number
   currency: 'GBP' | 'EUR'
-  photo_url: string | null
+  photo_url: string | null      // legacy
+  photo_urls: string[]          // new (1-3 poze)
   route_order: number
   labels: string[]
   client_satisfied: boolean | null
@@ -58,5 +59,5 @@ export interface NewParcelData {
   content_description: string
   appearance: 'box' | 'bag' | 'envelope' | 'other'
   weight: number
-  photo: File | null
+  photos: File[]
 }

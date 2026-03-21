@@ -21,14 +21,18 @@ export default function StepConfirm({
       <h2 className="text-xl font-bold text-slate-800">Confirmare</h2>
       <p className="text-slate-400">Verifică datele și salvează coletul.</p>
 
-      {/* Photo preview */}
-      {data.photo && (
-        <div className="rounded-2xl overflow-hidden border border-card-border">
-          <img
-            src={URL.createObjectURL(data.photo)}
-            alt="Colet"
-            className="w-full max-h-48 object-cover"
-          />
+      {/* Photo previews */}
+      {data.photos.length > 0 && (
+        <div className={`grid gap-2 ${data.photos.length > 1 ? 'grid-cols-3' : 'grid-cols-1'}`}>
+          {data.photos.map((photo, i) => (
+            <div key={i} className="rounded-2xl overflow-hidden border border-card-border">
+              <img
+                src={URL.createObjectURL(photo)}
+                alt={`Colet ${i + 1}`}
+                className="w-full max-h-48 object-cover"
+              />
+            </div>
+          ))}
         </div>
       )}
 

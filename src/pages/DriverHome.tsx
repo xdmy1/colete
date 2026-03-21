@@ -423,11 +423,29 @@ function ParcelCard({
           </div>
         </button>
 
+        {/* Waze navigation button */}
+        <a
+          href={`https://waze.com/ul?q=${encodeURIComponent(parcel.receiver_details.address)}&navigate=yes`}
+          onClick={(e) => e.stopPropagation()}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`flex items-center justify-center w-12 transition-colors border-l ${
+            isDelivered
+              ? 'border-pill-green-border/60 bg-blue-50/60 text-blue-400 hover:bg-blue-50 active:bg-blue-100'
+              : 'border-card-border bg-blue-50/40 text-blue-400 hover:bg-blue-50 active:bg-blue-100'
+          }`}
+          aria-label={`Navigare la ${parcel.receiver_details.address}`}
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+        </a>
+
         {/* Phone call button */}
         <a
           href={`tel:${parcel.receiver_details.phone}`}
           onClick={(e) => e.stopPropagation()}
-          className={`flex items-center justify-center w-14 transition-colors border-l ${
+          className={`flex items-center justify-center w-12 transition-colors border-l ${
             isDelivered
               ? 'border-pill-green-border/60 bg-pill-green-bg/60 text-emerald-500 hover:bg-pill-green-bg active:bg-emerald-100'
               : 'border-card-border bg-pill-green-bg/40 text-emerald-500 hover:bg-pill-green-bg active:bg-emerald-100'

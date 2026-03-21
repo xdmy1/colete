@@ -119,13 +119,15 @@ export function useAddParcel(driverId: string) {
       const currency = getCurrency(parcelData.origin_code, parcelData.delivery_destination)
 
       // 2. Upload poza — compresata daca e prea mare
+      // Folosim un UUID pre-generat ca parcel ID si ca nume de fisier
+      // asa fiecare colet are o poza unica, fara coliziuni
+      const parcelId = crypto.randomUUID()
       let photoUrl: string | null = null
       if (parcelData.photo) {
         const photo = parcelData.photo.size > 200_000
           ? await compressImage(parcelData.photo)
           : parcelData.photo
-        const fileName = humanId.replace(/[^a-zA-Z0-9-]/g, '_')
-        const filePath = `${driverId}/${weekId}/${fileName}.jpg`
+        const filePath = `${driverId}/${weekId}/${parcelId}.jpg`
 
         console.log('[ADD] uploading photo:', filePath, 'size:', photo.size)
 
@@ -143,6 +145,7 @@ export function useAddParcel(driverId: string) {
 
       // 3. Insert colet
       const insertData = {
+        id: parcelId,
         human_id: humanId,
         numeric_id: numericId,
         driver_id: driverId,
@@ -325,7 +328,12 @@ export function useDeleteParcel() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (parcelId: string) => {
+    mutationFn: async ({ parcelId, photoUrl }: { parcelId: string; photoUrl: string | null }) => {
+      // Sterge poza din storage inainte de a sterge coletul
+      if (photoUrl) {
+        await supabase.storage.from('parcels').remove([photoUrl])
+      }
+
       const { error } = await supabase
         .from('parcels')
         .delete()

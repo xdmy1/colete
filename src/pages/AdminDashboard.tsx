@@ -518,7 +518,7 @@ export default function AdminDashboard() {
           }}
           onDelete={async () => {
             if (!confirm('Ești sigur că vrei să ștergi acest colet?')) return
-            await deleteParcel.mutateAsync(selectedParcel.id)
+            await deleteParcel.mutateAsync({ parcelId: selectedParcel.id, photoUrl: selectedParcel.photo_url ?? null })
             setSelectedParcel(null)
           }}
           isSaving={updateParcel.isPending}

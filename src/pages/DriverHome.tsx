@@ -424,9 +424,11 @@ function ParcelCard({
         </button>
 
         {/* Waze navigation button */}
-        <a
-          href={`waze://ul?q=${encodeURIComponent(parcel.receiver_details.address)}&navigate=yes`}
-          onClick={(e) => e.stopPropagation()}
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            window.location.href = `waze://ul?q=${encodeURIComponent(parcel.receiver_details.address)}&navigate=yes`
+          }}
           className={`flex items-center justify-center w-12 transition-colors border-l ${
             isDelivered
               ? 'border-pill-green-border/60 bg-blue-50/60 text-blue-400 hover:bg-blue-50 active:bg-blue-100'
@@ -437,7 +439,7 @@ function ParcelCard({
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
           </svg>
-        </a>
+        </button>
 
         {/* Phone call button */}
         <a

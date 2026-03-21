@@ -427,7 +427,7 @@ function ParcelCard({
         <button
           onClick={(e) => {
             e.stopPropagation()
-            window.location.href = `waze://ul?q=${encodeURIComponent(parcel.receiver_details.address)}&navigate=yes`
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(parcel.receiver_details.address)}`, '_blank')
           }}
           className={`flex items-center justify-center w-12 transition-colors border-l ${
             isDelivered

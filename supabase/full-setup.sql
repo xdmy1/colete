@@ -184,7 +184,8 @@ BEGIN
     AND origin_code        = p_origin_code
     AND delivery_destination = p_delivery_destination
     AND numeric_id >= v_range_start
-    AND numeric_id <  v_range_end;
+    AND numeric_id <  v_range_end
+    AND is_archived = false;
 
   RETURN v_max_used + 1;
 END;

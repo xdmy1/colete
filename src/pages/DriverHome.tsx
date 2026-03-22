@@ -4,8 +4,9 @@ import { useAuth } from '../hooks/useAuth'
 import {
   useDriverParcels,
   useMarkDelivered,
+  useUpdateParcel,
 } from '../hooks/useParcels'
-import { formatPrice, getDestLabel } from '../lib/utils'
+import { formatPrice, getDestLabel, calculatePrice } from '../lib/utils'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
@@ -24,7 +25,9 @@ export default function DriverHome() {
   const navigate = useNavigate()
   const { data: parcels, isLoading } = useDriverParcels(profile?.id)
   const markDelivered = useMarkDelivered(profile?.id || '')
+  const updateParcel = useUpdateParcel()
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null)
+  const [editMode, setEditMode] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedbackSatisfied, setFeedbackSatisfied] = useState<boolean | null>(
     null
@@ -252,7 +255,15 @@ export default function DriverHome() {
       {selectedParcel && !showFeedback && (
         <ParcelDetailModal
           parcel={selectedParcel}
-          onClose={() => setSelectedParcel(null)}
+          editMode={editMode}
+          onClose={() => { setSelectedParcel(null); setEditMode(false) }}
+          onEdit={() => setEditMode(true)}
+          onSave={async (updates) => {
+            await updateParcel.mutateAsync({ parcelId: selectedParcel.id, updates })
+            setEditMode(false)
+            setSelectedParcel(null)
+          }}
+          isSaving={updateParcel.isPending}
           onMarkDelivered={
             selectedParcel.status === 'pending'
               ? handleMarkDelivered
@@ -462,13 +473,48 @@ function ParcelCard({
 // ── Detail Modal ──
 function ParcelDetailModal({
   parcel,
+  editMode,
   onClose,
+  onEdit,
+  onSave,
+  isSaving,
   onMarkDelivered,
 }: {
   parcel: Parcel
+  editMode: boolean
   onClose: () => void
+  onEdit: () => void
+  onSave: (updates: {
+    sender_details?: { name: string; phone: string; address: string }
+    receiver_details?: { name: string; phone: string; address: string }
+    content_description?: string | null
+    weight?: number
+    price?: number
+  }) => void
+  isSaving: boolean
   onMarkDelivered?: () => void
 }) {
+  const [senderName, setSenderName] = useState(parcel.sender_details.name)
+  const [senderPhone, setSenderPhone] = useState(parcel.sender_details.phone)
+  const [senderAddress, setSenderAddress] = useState(parcel.sender_details.address)
+  const [receiverName, setReceiverName] = useState(parcel.receiver_details.name)
+  const [receiverPhone, setReceiverPhone] = useState(parcel.receiver_details.phone)
+  const [receiverAddress, setReceiverAddress] = useState(parcel.receiver_details.address)
+  const [contentDesc, setContentDesc] = useState(parcel.content_description || '')
+  const [weight, setWeight] = useState(parcel.weight)
+
+  const inputCls = 'w-full px-4 py-2.5 rounded-xl border border-card-border bg-white text-sm focus:outline-none focus:ring-1 focus:ring-pill-green-border focus:border-pill-green-border transition-colors'
+
+  function handleSave() {
+    onSave({
+      sender_details: { name: senderName, phone: senderPhone, address: senderAddress },
+      receiver_details: { name: receiverName, phone: receiverPhone, address: receiverAddress },
+      content_description: contentDesc || null,
+      weight,
+      price: calculatePrice(weight),
+    })
+  }
+
   return (
     <div
       className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 flex items-end sm:items-center justify-center"
@@ -504,117 +550,176 @@ function ParcelDetailModal({
 
         {/* Content */}
         <div className="p-5 space-y-4">
-          {/* Destinatar */}
-          <div className="rounded-2xl p-4 border border-card-border">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Destinatar
-            </p>
-            <p className="text-xl font-extrabold text-slate-800 mb-1">
-              {parcel.receiver_details.name}
-            </p>
-            <p className="text-sm text-slate-500 mb-3">
-              {parcel.receiver_details.address}
-            </p>
-            <a
-              href={`tel:${parcel.receiver_details.phone}`}
-              className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-pill-green-bg text-emerald-700 font-bold text-base border border-pill-green-border active:bg-emerald-100 transition-colors"
-            >
-              <PhoneIcon className="w-5 h-5" />
-              {parcel.receiver_details.phone}
-            </a>
-          </div>
+          {editMode ? (
+            <>
+              <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Expeditor</h3>
+              <input className={inputCls} value={senderName} onChange={(e) => setSenderName(e.target.value)} placeholder="Nume expeditor" />
+              <input className={inputCls} value={senderPhone} onChange={(e) => setSenderPhone(e.target.value)} placeholder="Telefon expeditor" />
+              <input className={inputCls} value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} placeholder="Adresă expeditor" />
 
-          {/* Expeditor */}
-          <div className="rounded-2xl p-4 border border-card-border">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Expeditor
-            </p>
-            <p className="text-lg font-bold text-slate-800 mb-1">
-              {parcel.sender_details.name}
-            </p>
-            <a
-              href={`tel:${parcel.sender_details.phone}`}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-semibold text-sm border border-blue-200 active:bg-blue-100 transition-colors"
-            >
-              <PhoneIcon className="w-4 h-4" />
-              {parcel.sender_details.phone}
-            </a>
-          </div>
+              <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-1">Destinatar</h3>
+              <input className={inputCls} value={receiverName} onChange={(e) => setReceiverName(e.target.value)} placeholder="Nume destinatar" />
+              <input className={inputCls} value={receiverPhone} onChange={(e) => setReceiverPhone(e.target.value)} placeholder="Telefon destinatar" />
+              <input className={inputCls} value={receiverAddress} onChange={(e) => setReceiverAddress(e.target.value)} placeholder="Adresă destinatar" />
 
-          {/* Details grid */}
-          <div className="grid grid-cols-3 gap-2.5">
-            <div className="rounded-2xl p-3 text-center border border-card-border">
-              <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Greutate</p>
-              <p className="text-lg font-extrabold text-slate-800">{parcel.weight} kg</p>
-            </div>
-            <div className="rounded-2xl p-3 text-center border border-card-border">
-              <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Preț</p>
-              <p className="text-lg font-extrabold text-emerald-700">
-                {formatPrice(parcel.price, parcel.currency)}
-              </p>
-            </div>
-            <div className="rounded-2xl p-3 text-center border border-card-border">
-              <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Bucăți</p>
-              <p className="text-base font-bold text-slate-800">{parcel.nr_bucati ?? 1}</p>
-            </div>
-          </div>
+              <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-1">Detalii colet</h3>
+              <input className={inputCls} value={contentDesc} onChange={(e) => setContentDesc(e.target.value)} placeholder="Descriere conținut" />
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block font-medium">Greutate (kg)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  className={inputCls}
+                  value={weight}
+                  onChange={(e) => setWeight(Number(e.target.value))}
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  Preț recalculat: {formatPrice(calculatePrice(weight), parcel.currency)}
+                </p>
+              </div>
 
-          {parcel.content_description && (
-            <div className="bg-pill-orange-bg rounded-2xl p-3.5 border border-pill-orange-border">
-              <p className="text-[10px] font-bold text-amber-600 uppercase mb-0.5">Aspect</p>
-              <p className="text-sm text-slate-700">{parcel.content_description}</p>
-            </div>
-          )}
-
-          {parcel.labels.length > 0 && (
-            <div className="flex gap-2 flex-wrap">
-              {parcel.labels.map((label) => (
-                <span
-                  key={label}
-                  className="px-3.5 py-1 rounded-full bg-violet-50 text-violet-600 text-sm font-bold border border-violet-200"
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={onClose}
+                  className="flex-1 py-3 rounded-full border border-card-border text-slate-500 font-semibold hover:bg-gray-50 text-sm transition-colors"
                 >
-                  {label}
-                </span>
-              ))}
-            </div>
-          )}
+                  Anulează
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="flex-1 py-3 rounded-full bg-pill-green-bg text-emerald-800 font-bold border border-pill-green-border hover:bg-emerald-100 disabled:opacity-50 text-sm transition-colors"
+                >
+                  {isSaving ? 'Se salvează...' : 'Salvează'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Destinatar */}
+              <div className="rounded-2xl p-4 border border-card-border">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  Destinatar
+                </p>
+                <p className="text-xl font-extrabold text-slate-800 mb-1">
+                  {parcel.receiver_details.name}
+                </p>
+                <p className="text-sm text-slate-500 mb-3">
+                  {parcel.receiver_details.address}
+                </p>
+                <a
+                  href={`tel:${parcel.receiver_details.phone}`}
+                  className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-pill-green-bg text-emerald-700 font-bold text-base border border-pill-green-border active:bg-emerald-100 transition-colors"
+                >
+                  <PhoneIcon className="w-5 h-5" />
+                  {parcel.receiver_details.phone}
+                </a>
+              </div>
 
-          {parcel.delivery_note && (
-            <div className="rounded-2xl p-3.5 border border-card-border">
-              <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Notă livrare</p>
-              <p className="text-sm text-slate-700">{parcel.delivery_note}</p>
-            </div>
-          )}
+              {/* Expeditor */}
+              <div className="rounded-2xl p-4 border border-card-border">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  Expeditor
+                </p>
+                <p className="text-lg font-bold text-slate-800 mb-1">
+                  {parcel.sender_details.name}
+                </p>
+                <a
+                  href={`tel:${parcel.sender_details.phone}`}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-semibold text-sm border border-blue-200 active:bg-blue-100 transition-colors"
+                >
+                  <PhoneIcon className="w-4 h-4" />
+                  {parcel.sender_details.phone}
+                </a>
+              </div>
 
-          {parcel.client_satisfied !== null && (
-            <div
-              className={`rounded-2xl p-3.5 border ${parcel.client_satisfied ? 'bg-pill-green-bg/50 border-pill-green-border' : 'bg-red-50 border-red-200'}`}
-            >
-              <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Client mulțumit?</p>
-              <p
-                className={`text-base font-bold ${parcel.client_satisfied ? 'text-emerald-700' : 'text-red-600'}`}
-              >
-                {parcel.client_satisfied ? 'Da' : 'Nu'}
-              </p>
-            </div>
-          )}
+              {/* Details grid */}
+              <div className="grid grid-cols-3 gap-2.5">
+                <div className="rounded-2xl p-3 text-center border border-card-border">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Greutate</p>
+                  <p className="text-lg font-extrabold text-slate-800">{parcel.weight} kg</p>
+                </div>
+                <div className="rounded-2xl p-3 text-center border border-card-border">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Preț</p>
+                  <p className="text-lg font-extrabold text-emerald-700">
+                    {formatPrice(parcel.price, parcel.currency)}
+                  </p>
+                </div>
+                <div className="rounded-2xl p-3 text-center border border-card-border">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Bucăți</p>
+                  <p className="text-base font-bold text-slate-800">{parcel.nr_bucati ?? 1}</p>
+                </div>
+              </div>
 
-          {/* Actions */}
-          {onMarkDelivered && (
-            <button
-              onClick={onMarkDelivered}
-              className="w-full py-4 bg-pill-green-bg text-emerald-800 text-lg font-bold rounded-full border border-pill-green-border hover:bg-emerald-100 active:bg-emerald-200 transition-colors"
-            >
-              Marchează ca Livrat
-            </button>
-          )}
+              {parcel.content_description && (
+                <div className="bg-pill-orange-bg rounded-2xl p-3.5 border border-pill-orange-border">
+                  <p className="text-[10px] font-bold text-amber-600 uppercase mb-0.5">Aspect</p>
+                  <p className="text-sm text-slate-700">{parcel.content_description}</p>
+                </div>
+              )}
 
-          {parcel.status === 'delivered' && (
-            <div className="text-center py-3 text-emerald-700 font-bold text-base bg-pill-green-bg/50 rounded-full border border-pill-green-border">
-              Livrat
-              {parcel.delivered_at &&
-                ` — ${new Date(parcel.delivered_at).toLocaleDateString('ro-RO')}`}
-            </div>
+              {parcel.labels.length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                  {parcel.labels.map((label) => (
+                    <span
+                      key={label}
+                      className="px-3.5 py-1 rounded-full bg-violet-50 text-violet-600 text-sm font-bold border border-violet-200"
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {parcel.delivery_note && (
+                <div className="rounded-2xl p-3.5 border border-card-border">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Notă livrare</p>
+                  <p className="text-sm text-slate-700">{parcel.delivery_note}</p>
+                </div>
+              )}
+
+              {parcel.client_satisfied !== null && (
+                <div
+                  className={`rounded-2xl p-3.5 border ${parcel.client_satisfied ? 'bg-pill-green-bg/50 border-pill-green-border' : 'bg-red-50 border-red-200'}`}
+                >
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Client mulțumit?</p>
+                  <p
+                    className={`text-base font-bold ${parcel.client_satisfied ? 'text-emerald-700' : 'text-red-600'}`}
+                  >
+                    {parcel.client_satisfied ? 'Da' : 'Nu'}
+                  </p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                {parcel.status === 'pending' && (
+                  <button
+                    onClick={onEdit}
+                    className="flex-1 py-3.5 rounded-full border border-card-border text-slate-600 font-semibold hover:bg-gray-50 active:bg-gray-100 transition-colors text-base"
+                  >
+                    Editează
+                  </button>
+                )}
+                {onMarkDelivered && (
+                  <button
+                    onClick={onMarkDelivered}
+                    className="flex-1 py-4 bg-pill-green-bg text-emerald-800 text-lg font-bold rounded-full border border-pill-green-border hover:bg-emerald-100 active:bg-emerald-200 transition-colors"
+                  >
+                    Marchează ca Livrat
+                  </button>
+                )}
+              </div>
+
+              {parcel.status === 'delivered' && (
+                <div className="text-center py-3 text-emerald-700 font-bold text-base bg-pill-green-bg/50 rounded-full border border-pill-green-border">
+                  Livrat
+                  {parcel.delivered_at &&
+                    ` — ${new Date(parcel.delivered_at).toLocaleDateString('ro-RO')}`}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -301,6 +301,34 @@ export default function StepDetails({
     <div className="space-y-5">
       <h2 className="text-xl font-bold text-slate-800">Detalii Colet</h2>
 
+      {/* Destinatar */}
+      <fieldset className="space-y-3">
+        <legend className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
+          Destinatar
+        </legend>
+        <ContactAutocomplete
+          placeholder="Nume destinatar *"
+          value={receiver.name}
+          contacts={contacts}
+          onChange={(val) => setReceiver({ ...receiver, name: val })}
+          onSelect={(c) => setReceiver({ name: c.name, phone: c.phone, address: c.address })}
+          inputCls={inputCls}
+        />
+        <input
+          type="tel"
+          placeholder="Telefon destinatar *"
+          value={receiver.phone}
+          onChange={(e) => setReceiver({ ...receiver, phone: e.target.value })}
+          className={inputCls}
+        />
+        <AddressAutocomplete
+          placeholder="Adresa destinatar *"
+          value={receiver.address}
+          onChange={(val) => setReceiver({ ...receiver, address: val })}
+          inputCls={inputCls}
+        />
+      </fieldset>
+
       {/* Expeditor */}
       <fieldset className="space-y-3">
         <legend className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
@@ -349,34 +377,6 @@ export default function StepDetails({
             )}
           </button>
         </div>
-      </fieldset>
-
-      {/* Destinatar */}
-      <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
-          Destinatar
-        </legend>
-        <ContactAutocomplete
-          placeholder="Nume destinatar *"
-          value={receiver.name}
-          contacts={contacts}
-          onChange={(val) => setReceiver({ ...receiver, name: val })}
-          onSelect={(c) => setReceiver({ name: c.name, phone: c.phone, address: c.address })}
-          inputCls={inputCls}
-        />
-        <input
-          type="tel"
-          placeholder="Telefon destinatar *"
-          value={receiver.phone}
-          onChange={(e) => setReceiver({ ...receiver, phone: e.target.value })}
-          className={inputCls}
-        />
-        <AddressAutocomplete
-          placeholder="Adresa destinatar *"
-          value={receiver.address}
-          onChange={(val) => setReceiver({ ...receiver, address: val })}
-          inputCls={inputCls}
-        />
       </fieldset>
 
       {/* Aspect (descriere comanda) */}

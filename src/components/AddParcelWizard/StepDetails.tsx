@@ -384,12 +384,12 @@ export default function StepDetails({
         <label className="text-sm font-semibold text-slate-600 uppercase tracking-wide block mb-2">
           Aspect
         </label>
-        <input
-          type="text"
+        <textarea
           placeholder="Descrie coletul (ex: haine, documente)"
           value={contentDesc}
           onChange={(e) => setContentDesc(e.target.value)}
-          className={inputCls}
+          rows={3}
+          className={`${inputCls} resize-none`}
         />
       </div>
 

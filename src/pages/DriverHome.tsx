@@ -36,31 +36,41 @@ export default function DriverHome() {
   const [cashCollected, setCashCollected] = useState(false)
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'cod'>('all')
   const [routeFilter, setRouteFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'delivered'>('all')
   const [search, setSearch] = useState('')
 
   const allActive = parcels?.filter((p) => p.status === 'pending') || []
-  const deliveredParcels = parcels?.filter((p) => p.status === 'delivered') || []
+  const allDelivered = parcels?.filter((p) => p.status === 'delivered') || []
 
-  // Rute unice din coletele active
+  // Rute unice din toate coletele
   const uniqueRoutes = Array.from(
-    new Map(allActive.map(p => [`${p.origin_code}-${p.delivery_destination}`, { origin: p.origin_code, destination: p.delivery_destination }])).values()
+    new Map((parcels || []).map(p => [`${p.origin_code}-${p.delivery_destination}`, { origin: p.origin_code, destination: p.delivery_destination }])).values()
   )
   const hasMultipleRoutes = uniqueRoutes.length > 1
 
-  const activeParcels = allActive
-    .filter(p => routeFilter === 'all' || `${p.origin_code}-${p.delivery_destination}` === routeFilter)
-
-  function applySearch(list: Parcel[]) {
-    if (!search.trim()) return list
-    const q = search.toLowerCase().trim()
-    return list.filter(p =>
-      p.human_id.toLowerCase().includes(q) ||
-      p.receiver_details.name.toLowerCase().includes(q) ||
-      p.sender_details.name.toLowerCase().includes(q) ||
-      p.receiver_details.phone.includes(q) ||
-      p.receiver_details.address.toLowerCase().includes(q)
-    )
+  function applyFilters(list: Parcel[], includePayment = false) {
+    let result = list
+    if (routeFilter !== 'all')
+      result = result.filter(p => `${p.origin_code}-${p.delivery_destination}` === routeFilter)
+    if (includePayment && paymentFilter !== 'all')
+      result = result.filter(p =>
+        paymentFilter === 'paid' ? p.payment_status === 'paid' : (p.payment_status === 'cod' || !p.payment_status)
+      )
+    if (search.trim()) {
+      const q = search.toLowerCase().trim()
+      result = result.filter(p =>
+        p.human_id.toLowerCase().includes(q) ||
+        p.receiver_details.name.toLowerCase().includes(q) ||
+        p.sender_details.name.toLowerCase().includes(q) ||
+        p.receiver_details.phone.includes(q) ||
+        p.receiver_details.address.toLowerCase().includes(q)
+      )
+    }
+    return result
   }
+
+  const activeParcels = applyFilters(allActive, true)
+  const deliveredParcels = applyFilters(allDelivered)
 
   function handleMarkDelivered() {
     setShowFeedback(true)
@@ -101,16 +111,30 @@ export default function DriverHome() {
         </div>
       ) : (
         <>
-          {/* Quick stats */}
+          {/* Quick stats — clickabile ca filtre */}
           <div className="flex gap-3 mb-5">
-            <div className="flex-1 bg-pill-orange-bg border border-pill-orange-border rounded-2xl px-4 py-3 text-center">
-              <p className="text-2xl font-extrabold text-amber-700">{activeParcels.length}</p>
-              <p className="text-xs font-semibold text-amber-600/70 uppercase tracking-wide">Active</p>
-            </div>
-            <div className="flex-1 bg-pill-green-bg border border-pill-green-border rounded-2xl px-4 py-3 text-center">
-              <p className="text-2xl font-extrabold text-emerald-700">{deliveredParcels.length}</p>
-              <p className="text-xs font-semibold text-emerald-600/70 uppercase tracking-wide">Livrate</p>
-            </div>
+            <button
+              onClick={() => setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending')}
+              className={`flex-1 rounded-2xl px-4 py-3 text-center transition-all border ${
+                statusFilter === 'pending'
+                  ? 'bg-amber-500 border-amber-500'
+                  : 'bg-pill-orange-bg border-pill-orange-border'
+              }`}
+            >
+              <p className={`text-2xl font-extrabold ${statusFilter === 'pending' ? 'text-white' : 'text-amber-700'}`}>{allActive.length}</p>
+              <p className={`text-xs font-semibold uppercase tracking-wide ${statusFilter === 'pending' ? 'text-white/80' : 'text-amber-600/70'}`}>De livrat</p>
+            </button>
+            <button
+              onClick={() => setStatusFilter(statusFilter === 'delivered' ? 'all' : 'delivered')}
+              className={`flex-1 rounded-2xl px-4 py-3 text-center transition-all border ${
+                statusFilter === 'delivered'
+                  ? 'bg-emerald-500 border-emerald-500'
+                  : 'bg-pill-green-bg border-pill-green-border'
+              }`}
+            >
+              <p className={`text-2xl font-extrabold ${statusFilter === 'delivered' ? 'text-white' : 'text-emerald-700'}`}>{allDelivered.length}</p>
+              <p className={`text-xs font-semibold uppercase tracking-wide ${statusFilter === 'delivered' ? 'text-white/80' : 'text-emerald-600/70'}`}>Livrate</p>
+            </button>
           </div>
 
           {/* Search */}
@@ -169,66 +193,66 @@ export default function DriverHome() {
             </div>
           )}
 
-          {/* Payment filter */}
-          <div className="flex gap-2 mb-4">
-            {(['all', 'paid', 'cod'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setPaymentFilter(f)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                  paymentFilter === f
-                    ? f === 'paid'
-                      ? 'bg-emerald-50 border-emerald-400 text-emerald-700'
-                      : f === 'cod'
-                        ? 'bg-red-50 border-red-400 text-red-600'
-                        : 'bg-slate-800 border-slate-800 text-white'
-                    : 'bg-white border-card-border text-slate-400 hover:border-slate-300'
-                }`}
-              >
-                {f === 'all' ? `Toate (${activeParcels.length})` : f === 'paid' ? `Achitat (${activeParcels.filter(p => p.payment_status === 'paid').length})` : `La livrare (${activeParcels.filter(p => p.payment_status === 'cod' || !p.payment_status).length})`}
-              </button>
-            ))}
-          </div>
+          {/* Payment filter — doar pentru sectiunea activa */}
+          {statusFilter !== 'delivered' && (
+            <div className="flex gap-2 mb-4">
+              {(['all', 'paid', 'cod'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setPaymentFilter(f)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                    paymentFilter === f
+                      ? f === 'paid'
+                        ? 'bg-emerald-50 border-emerald-400 text-emerald-700'
+                        : f === 'cod'
+                          ? 'bg-red-50 border-red-400 text-red-600'
+                          : 'bg-slate-800 border-slate-800 text-white'
+                      : 'bg-white border-card-border text-slate-400 hover:border-slate-300'
+                  }`}
+                >
+                  {f === 'all' ? `Toate (${applyFilters(allActive).length})` : f === 'paid' ? `Achitat (${applyFilters(allActive).filter(p => p.payment_status === 'paid').length})` : `La livrare (${applyFilters(allActive).filter(p => p.payment_status === 'cod' || !p.payment_status).length})`}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Active parcels */}
-          <section className="mb-6">
-            {activeParcels.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 mx-auto mb-4 bg-white border border-card-border rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
+          {statusFilter !== 'delivered' && (
+            <section className="mb-6">
+              {activeParcels.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-white border border-card-border rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                  </div>
+                  <p className="text-slate-400 font-medium">Niciun colet activ</p>
+                  <p className="text-slate-300 text-sm mt-1">Apasă + pentru a adăuga</p>
                 </div>
-                <p className="text-slate-400 font-medium">Niciun colet activ</p>
-                <p className="text-slate-300 text-sm mt-1">Apasă + pentru a adăuga</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {applySearch(activeParcels
-                  .filter(p =>
-                    paymentFilter === 'all' ? true :
-                    paymentFilter === 'paid' ? p.payment_status === 'paid' :
-                    (p.payment_status === 'cod' || !p.payment_status)
-                  ))
-                  .map((parcel) => (
+              ) : (
+                <div className="space-y-3">
+                  {activeParcels.map((parcel) => (
                     <ParcelCard
                       key={parcel.id}
                       parcel={parcel}
                       onClick={() => setSelectedParcel(parcel)}
                     />
                   ))}
-              </div>
-            )}
-          </section>
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Delivered parcels */}
-          {deliveredParcels.length > 0 && (
+          {statusFilter !== 'pending' && deliveredParcels.length > 0 && (
             <section>
-              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
-                Livrate ({deliveredParcels.length})
-              </h2>
+              {statusFilter === 'all' && (
+                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
+                  Livrate ({deliveredParcels.length})
+                </h2>
+              )}
               <div className="space-y-3">
-                {applySearch(deliveredParcels).map((parcel) => (
+                {deliveredParcels.map((parcel) => (
                   <ParcelCard
                     key={parcel.id}
                     parcel={parcel}
@@ -237,6 +261,17 @@ export default function DriverHome() {
                 ))}
               </div>
             </section>
+          )}
+
+          {statusFilter !== 'pending' && statusFilter !== 'all' && deliveredParcels.length === 0 && (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 bg-white border border-card-border rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+              <p className="text-slate-400 font-medium">Niciun colet livrat</p>
+            </div>
           )}
         </>
       )}

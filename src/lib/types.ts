@@ -5,6 +5,7 @@ export interface Profile {
   username: string
   pin_code: string
   role: 'admin' | 'driver'
+  excluded_destinations: string[] | null
   created_at: string
 }
 

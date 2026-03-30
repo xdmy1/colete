@@ -17,13 +17,17 @@ export default function AddParcel() {
 
   const effectiveDriverId = isAdmin ? adminSelectedDriver : profile?.id || null
 
+  const excludedDest = profile?.excluded_destinations ?? null
   const { data: driverRouteRanges } = useDriverRoutes(effectiveDriverId || undefined)
-  const availableRoutes = driverRouteRanges && driverRouteRanges.length > 0
+  const baseRoutes = driverRouteRanges && driverRouteRanges.length > 0
     ? driverRouteRanges.map(r =>
         ROUTES.find(rt => rt.origin === r.origin && rt.destination === r.destination)
         ?? { origin: r.origin as DestinationCode, destination: r.destination as DestinationCode, label: `${getDestLabel(r.origin)} → ${getDestLabel(r.destination)}` }
       )
     : ROUTES
+  const availableRoutes = excludedDest && excludedDest.length > 0
+    ? baseRoutes.filter(r => !excludedDest.includes(r.origin) && !excludedDest.includes(r.destination))
+    : baseRoutes
 
   const { data: drivers } = useAllDrivers()
   const addParcel = useAddParcel(effectiveDriverId || '')

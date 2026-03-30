@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useArchivedParcels, useAllDrivers } from '../hooks/useParcels'
+import { useAuth } from '../hooks/useAuth'
 import { formatPrice, getDestLabel, weekIdParts } from '../lib/utils'
 import { exportParcelsToExcel } from '../lib/exportExcel'
 import type { Parcel } from '../lib/types'
@@ -9,7 +10,8 @@ import ParcelPhoto from '../components/ParcelPhoto'
 
 export default function Archive() {
   const navigate = useNavigate()
-  const { data: parcels, isLoading } = useArchivedParcels()
+  const { profile } = useAuth()
+  const { data: parcels, isLoading } = useArchivedParcels(profile?.excluded_destinations)
   const { data: drivers } = useAllDrivers()
 
   const [driverFilter, setDriverFilter] = useState<string | 'all'>('all')
@@ -55,8 +57,9 @@ export default function Archive() {
     try {
       const weekLabel = weekFilter !== 'all' ? `_${weekFilter}` : ''
       const driverLabel = driverFilter !== 'all' ? `_${getDriverName(driverFilter)}` : ''
+      const sorted = [...filtered].sort((a, b) => a.numeric_id - b.numeric_id)
       await exportParcelsToExcel(
-        filtered,
+        sorted,
         getDriverName,
         `arhiva${driverLabel}${weekLabel}.xlsx`,
         false // fara poze

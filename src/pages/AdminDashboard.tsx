@@ -20,7 +20,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel } from '../hooks/useParcels'
 import { calculatePrice } from '../lib/utils'
 import { formatPrice, getDestLabel, ROUTES } from '../lib/utils'
-import { exportParcelsToExcel } from '../lib/exportExcel'
+import { exportParcelsToExcel, exportCashReportToExcel } from '../lib/exportExcel'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
@@ -561,14 +561,29 @@ export default function AdminDashboard() {
                 <h2 className="text-lg font-extrabold text-slate-800">Dare de seamă</h2>
                 <p className="text-xs text-slate-400">COD marcate livrate + achitate</p>
               </div>
-              <button
-                onClick={() => setShowCashReport(false)}
-                className="w-9 h-9 flex items-center justify-center rounded-full border border-card-border text-slate-400 hover:text-slate-600 hover:bg-gray-50"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-2">
+                {cashReport.length > 0 && (
+                  <button
+                    onClick={() => exportCashReportToExcel(
+                      cashReport.map(r => ({ ...r, driverName: getDriverName(r.driverId) }))
+                    )}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-blue-600 border border-blue-200 hover:bg-blue-50 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Excel
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowCashReport(false)}
+                  className="w-9 h-9 flex items-center justify-center rounded-full border border-card-border text-slate-400 hover:text-slate-600 hover:bg-gray-50"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div className="overflow-y-auto px-5 py-4 space-y-5">
               {cashReport.length === 0 ? (

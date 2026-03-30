@@ -34,10 +34,10 @@ export function useDriverParcels(driverId: string | undefined) {
 }
 
 // ADMIN: toate coletele active (de la toti soferii)
-export function useAllParcels() {
+export function useAllParcels(excludedDestinations?: string[] | null) {
   const queryClient = useQueryClient()
   return useQuery({
-    queryKey: ['parcels', 'all'],
+    queryKey: ['parcels', 'all', excludedDestinations ?? []],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('parcels')
@@ -46,7 +46,14 @@ export function useAllParcels() {
         .order('route_order', { ascending: true })
 
       if (error) throw error
-      const parcels = data as Parcel[]
+      let parcels = data as Parcel[]
+      if (excludedDestinations && excludedDestinations.length > 0) {
+        parcels = parcels.filter(
+          (p) =>
+            !excludedDestinations.includes(p.origin_code) &&
+            !excludedDestinations.includes(p.delivery_destination)
+        )
+      }
       const photoPaths = parcels.flatMap((p) => p.photo_urls?.length ? p.photo_urls : p.photo_url ? [p.photo_url] : [])
       batchPrefetchSignedUrls(queryClient, photoPaths)
       return parcels
@@ -283,8 +290,11 @@ export function useUpdateParcel() {
         sender_details?: { name: string; phone: string; address: string }
         receiver_details?: { name: string; phone: string; address: string }
         content_description?: string | null
+        nr_bucati?: number
         weight?: number
         price?: number
+        payment_status?: 'paid' | 'cod' | 'transfer'
+        transfer_recipient?: string | null
       }
     }) => {
       const { error } = await supabase
@@ -301,10 +311,10 @@ export function useUpdateParcel() {
 }
 
 // ADMIN: archived parcels (grouped by week)
-export function useArchivedParcels() {
+export function useArchivedParcels(excludedDestinations?: string[] | null) {
   const queryClient = useQueryClient()
   return useQuery({
-    queryKey: ['parcels', 'archived'],
+    queryKey: ['parcels', 'archived', excludedDestinations ?? []],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('parcels')
@@ -313,7 +323,14 @@ export function useArchivedParcels() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      const parcels = data as Parcel[]
+      let parcels = data as Parcel[]
+      if (excludedDestinations && excludedDestinations.length > 0) {
+        parcels = parcels.filter(
+          (p) =>
+            !excludedDestinations.includes(p.origin_code) &&
+            !excludedDestinations.includes(p.delivery_destination)
+        )
+      }
       const photoPaths = parcels.flatMap((p) => p.photo_urls?.length ? p.photo_urls : p.photo_url ? [p.photo_url] : [])
       batchPrefetchSignedUrls(queryClient, photoPaths)
       return parcels

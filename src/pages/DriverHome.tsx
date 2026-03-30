@@ -610,8 +610,11 @@ function ParcelDetailModal({
     sender_details?: { name: string; phone: string; address: string }
     receiver_details?: { name: string; phone: string; address: string }
     content_description?: string | null
+    nr_bucati?: number
     weight?: number
     price?: number
+    payment_status?: 'paid' | 'cod' | 'transfer'
+    transfer_recipient?: string | null
   }) => void
   isSaving: boolean
   onMarkDelivered?: () => void
@@ -623,17 +626,25 @@ function ParcelDetailModal({
   const [receiverPhone, setReceiverPhone] = useState(parcel.receiver_details.phone)
   const [receiverAddress, setReceiverAddress] = useState(parcel.receiver_details.address)
   const [contentDesc, setContentDesc] = useState(parcel.content_description || '')
+  const [nrBucati, setNrBucati] = useState(parcel.nr_bucati)
   const [weight, setWeight] = useState(parcel.weight)
+  const [manualPrice, setManualPrice] = useState(parcel.price)
+  const [paymentStatus, setPaymentStatus] = useState<'paid' | 'cod' | 'transfer'>(parcel.payment_status)
+  const [transferRecipient, setTransferRecipient] = useState(parcel.transfer_recipient || '')
 
   const inputCls = 'w-full px-4 py-2.5 rounded-xl border border-card-border bg-white text-sm focus:outline-none focus:ring-1 focus:ring-pill-green-border focus:border-pill-green-border transition-colors'
+  const selectCls = inputCls
 
   function handleSave() {
     onSave({
       sender_details: { name: senderName, phone: senderPhone, address: senderAddress },
       receiver_details: { name: receiverName, phone: receiverPhone, address: receiverAddress },
       content_description: contentDesc || null,
+      nr_bucati: nrBucati,
       weight,
-      price: calculatePrice(weight),
+      price: manualPrice,
+      payment_status: paymentStatus,
+      transfer_recipient: paymentStatus === 'transfer' ? transferRecipient || null : null,
     })
   }
 
@@ -686,20 +697,38 @@ function ParcelDetailModal({
 
               <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-1">Detalii colet</h3>
               <input className={inputCls} value={contentDesc} onChange={(e) => setContentDesc(e.target.value)} placeholder="Descriere conținut" />
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="text-xs text-slate-400 mb-1 block font-medium">Nr. bucăți</label>
+                  <input type="number" min="1" className={inputCls} value={nrBucati} onChange={(e) => setNrBucati(Number(e.target.value))} />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-slate-400 mb-1 block font-medium">Greutate (kg)</label>
+                  <input type="number" step="0.1" min="0" className={inputCls} value={weight} onChange={(e) => setWeight(Number(e.target.value))} />
+                </div>
+              </div>
               <div>
-                <label className="text-xs text-slate-400 mb-1 block font-medium">Greutate (kg)</label>
+                <label className="text-xs text-slate-400 mb-1 block font-medium">Preț ({parcel.currency})</label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   min="0"
                   className={inputCls}
-                  value={weight}
-                  onChange={(e) => setWeight(Number(e.target.value))}
+                  value={manualPrice}
+                  onChange={(e) => setManualPrice(Number(e.target.value))}
                 />
-                <p className="text-xs text-slate-400 mt-1">
-                  Preț recalculat: {formatPrice(calculatePrice(weight), parcel.currency)}
-                </p>
               </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block font-medium">Metodă de plată</label>
+                <select className={selectCls} value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as 'paid' | 'cod' | 'transfer')}>
+                  <option value="cod">Achitare la livrare (COD)</option>
+                  <option value="paid">Achitat</option>
+                  <option value="transfer">Transfer</option>
+                </select>
+              </div>
+              {paymentStatus === 'transfer' && (
+                <input className={inputCls} value={transferRecipient} onChange={(e) => setTransferRecipient(e.target.value)} placeholder="Beneficiar transfer" />
+              )}
 
               <div className="flex gap-3 pt-2">
                 <button

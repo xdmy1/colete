@@ -803,9 +803,35 @@ function ParcelDetailModal({
                 </div>
               </div>
 
+              {/* Plată */}
+              <div className={`rounded-2xl p-3.5 border ${
+                parcel.payment_status === 'paid' || parcel.cash_collected
+                  ? 'bg-pill-green-bg border-pill-green-border'
+                  : parcel.payment_status === 'transfer'
+                    ? 'bg-blue-50 border-blue-200'
+                    : 'bg-red-50 border-red-200'
+              }`}>
+                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Metodă de plată</p>
+                <p className={`text-base font-bold ${
+                  parcel.payment_status === 'paid' || parcel.cash_collected
+                    ? 'text-emerald-700'
+                    : parcel.payment_status === 'transfer'
+                      ? 'text-blue-700'
+                      : 'text-red-600'
+                }`}>
+                  {parcel.payment_status === 'paid'
+                    ? 'Achitat'
+                    : parcel.payment_status === 'transfer'
+                      ? `Transfer${parcel.transfer_recipient ? ` → ${parcel.transfer_recipient}` : ''}`
+                      : parcel.cash_collected
+                        ? 'La livrare — achitat ✓'
+                        : 'La livrare (neachitat)'}
+                </p>
+              </div>
+
               {parcel.content_description && (
                 <div className="bg-pill-orange-bg rounded-2xl p-3.5 border border-pill-orange-border">
-                  <p className="text-[10px] font-bold text-amber-600 uppercase mb-0.5">Aspect</p>
+                  <p className="text-[10px] font-bold text-amber-600 uppercase mb-0.5">Conținut</p>
                   <p className="text-sm text-slate-700">{parcel.content_description}</p>
                 </div>
               )}

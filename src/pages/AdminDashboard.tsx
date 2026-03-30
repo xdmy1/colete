@@ -1010,12 +1010,34 @@ function AdminParcelModal({
               <div className="rounded-2xl p-4 space-y-1.5 border border-card-border">
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Detalii</h3>
                 {parcel.content_description && (
-                  <p className="text-xs text-slate-500">Aspect: {parcel.content_description}</p>
+                  <p className="text-xs text-slate-500">Conținut: {parcel.content_description}</p>
                 )}
                 <p className="text-xs text-slate-500">Greutate: {parcel.weight} kg</p>
                 <p className="text-xs text-slate-500">Bucăți: {parcel.nr_bucati ?? 1}</p>
-                <p className="text-xs font-semibold" style={{ color: parcel.payment_status === 'paid' ? '#059669' : parcel.payment_status === 'transfer' ? '#2563eb' : '#dc2626' }}>
-                  {parcel.payment_status === 'paid' ? '✓ Achitat' : parcel.payment_status === 'transfer' ? `Transfer${parcel.transfer_recipient ? ` → ${parcel.transfer_recipient}` : ''}` : 'Achitare la livrare'}
+              </div>
+
+              <div className={`rounded-2xl p-4 border ${
+                parcel.payment_status === 'paid' || parcel.cash_collected
+                  ? 'bg-pill-green-bg border-pill-green-border'
+                  : parcel.payment_status === 'transfer'
+                    ? 'bg-blue-50 border-blue-200'
+                    : 'bg-red-50 border-red-200'
+              }`}>
+                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Metodă de plată</h3>
+                <p className={`text-sm font-bold ${
+                  parcel.payment_status === 'paid' || parcel.cash_collected
+                    ? 'text-emerald-700'
+                    : parcel.payment_status === 'transfer'
+                      ? 'text-blue-700'
+                      : 'text-red-600'
+                }`}>
+                  {parcel.payment_status === 'paid'
+                    ? 'Achitat'
+                    : parcel.payment_status === 'transfer'
+                      ? `Transfer${parcel.transfer_recipient ? ` → ${parcel.transfer_recipient}` : ''}`
+                      : parcel.cash_collected
+                        ? 'La livrare — achitat ✓'
+                        : 'La livrare (neachitat)'}
                 </p>
               </div>
 

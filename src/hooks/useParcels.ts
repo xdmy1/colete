@@ -379,17 +379,15 @@ export function useMarkDelivered(_driverId: string) {
       deliveryNote?: string
       cashCollected?: boolean
     }) => {
-      const now = new Date().toISOString()
       const { error } = await supabase
         .from('parcels')
         .update({
           status: 'delivered',
           is_archived: true,
-          week_id: getCurrentWeekId(),
           client_satisfied: clientSatisfied,
           delivery_note: deliveryNote || null,
           cash_collected: cashCollected ?? false,
-          delivered_at: now,
+          delivered_at: new Date().toISOString(),
         })
         .eq('id', parcelId)
 

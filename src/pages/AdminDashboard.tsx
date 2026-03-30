@@ -56,6 +56,7 @@ export default function AdminDashboard() {
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'cod' | 'transfer'>('all')
   const [search, setSearch] = useState('')
 
+  const [assignedOnly, setAssignedOnly] = useState(false)
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null)
 
   // Multi-select for transfer
@@ -152,6 +153,10 @@ export default function AdminDashboard() {
       )
     }
 
+    if (assignedOnly) {
+      result = result.filter((p) => p.labels?.includes('L'))
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase().trim()
       result = result.filter(
@@ -164,8 +169,8 @@ export default function AdminDashboard() {
       )
     }
 
-    return result
-  }, [parcels, driverFilter, routeFilter, statusFilter, search])
+    return [...result].sort((a, b) => a.numeric_id - b.numeric_id)
+  }, [parcels, driverFilter, routeFilter, statusFilter, paymentFilter, assignedOnly, search])
 
   const activeParcels = filteredParcels.filter((p) => p.status === 'pending')
   const deliveredParcels = filteredParcels.filter((p) => p.status === 'delivered')
@@ -337,6 +342,17 @@ export default function AdminDashboard() {
           <option value="cod">La livrare</option>
           <option value="transfer">Transfer</option>
         </select>
+
+        <button
+          onClick={() => setAssignedOnly((v) => !v)}
+          className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all shrink-0 ${
+            assignedOnly
+              ? 'bg-amber-50 border-amber-400 text-amber-700'
+              : 'border-card-border text-slate-400 hover:border-amber-300'
+          }`}
+        >
+          Atribuit
+        </button>
       </div>
 
       {/* Results count + select all + export */}

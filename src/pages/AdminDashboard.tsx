@@ -39,10 +39,14 @@ function DragIcon() {
 }
 
 export default function AdminDashboard() {
-  const { logout } = useAuth()
+  const { logout, profile } = useAuth()
   const navigate = useNavigate()
-  const { data: parcels, isLoading: loadingParcels } = useAllParcels()
+  const excludedDest = profile?.excluded_destinations ?? null
+  const { data: parcels, isLoading: loadingParcels } = useAllParcels(excludedDest)
   const { data: drivers, isLoading: loadingDrivers } = useAllDrivers()
+  const visibleRoutes = ROUTES.filter(
+    (r) => !excludedDest?.includes(r.origin) && !excludedDest?.includes(r.destination)
+  )
   const reorder = useReorderParcels('')
 
   // Filters
@@ -272,7 +276,7 @@ export default function AdminDashboard() {
           className="px-4 py-2 rounded-full border border-card-border bg-white text-sm font-medium text-slate-600 focus:outline-none focus:ring-1 focus:ring-pill-green-border shrink-0"
         >
           <option value="all">Toate rutele</option>
-          {ROUTES.map((r) => (
+          {visibleRoutes.map((r) => (
             <option key={`${r.origin}->${r.destination}`} value={`${r.origin}->${r.destination}`}>
               {r.label}
             </option>
@@ -348,7 +352,7 @@ export default function AdminDashboard() {
                   </span>
                 )}
               </h2>
-              {canReorder ? (
+              {canReorder && !selectMode ? (
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}

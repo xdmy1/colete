@@ -34,7 +34,7 @@ export default function DriverHome() {
   )
   const [feedbackNote, setFeedbackNote] = useState('')
   const [cashCollected, setCashCollected] = useState(false)
-  const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'cod'>('all')
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'cod' | 'transfer'>('all')
   const [routeFilter, setRouteFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'delivered'>('all')
   const [search, setSearch] = useState('')
@@ -54,7 +54,9 @@ export default function DriverHome() {
       result = result.filter(p => `${p.origin_code}-${p.delivery_destination}` === routeFilter)
     if (includePayment && paymentFilter !== 'all')
       result = result.filter(p =>
-        paymentFilter === 'paid' ? p.payment_status === 'paid' : (p.payment_status === 'cod' || !p.payment_status)
+        paymentFilter === 'paid' ? p.payment_status === 'paid' :
+        paymentFilter === 'transfer' ? p.payment_status === 'transfer' :
+        (p.payment_status === 'cod' || !p.payment_status)
       )
     if (search.trim()) {
       const q = search.toLowerCase().trim()
@@ -195,24 +197,30 @@ export default function DriverHome() {
 
           {/* Payment filter — doar pentru sectiunea activa */}
           {statusFilter !== 'delivered' && (
-            <div className="flex gap-2 mb-4">
-              {(['all', 'paid', 'cod'] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setPaymentFilter(f)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                    paymentFilter === f
-                      ? f === 'paid'
-                        ? 'bg-emerald-50 border-emerald-400 text-emerald-700'
-                        : f === 'cod'
-                          ? 'bg-red-50 border-red-400 text-red-600'
-                          : 'bg-slate-800 border-slate-800 text-white'
-                      : 'bg-white border-card-border text-slate-400 hover:border-slate-300'
-                  }`}
-                >
-                  {f === 'all' ? `Toate (${applyFilters(allActive).length})` : f === 'paid' ? `Achitat (${applyFilters(allActive).filter(p => p.payment_status === 'paid').length})` : `La livrare (${applyFilters(allActive).filter(p => p.payment_status === 'cod' || !p.payment_status).length})`}
-                </button>
-              ))}
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {(['all', 'paid', 'cod', 'transfer'] as const).map((f) => {
+                const base = applyFilters(allActive)
+                const count = f === 'all' ? base.length
+                  : f === 'paid' ? base.filter(p => p.payment_status === 'paid').length
+                  : f === 'transfer' ? base.filter(p => p.payment_status === 'transfer').length
+                  : base.filter(p => p.payment_status === 'cod' || !p.payment_status).length
+                const label = f === 'all' ? 'Toate' : f === 'paid' ? 'Achitat' : f === 'transfer' ? 'Transfer' : 'La livrare'
+                const activeStyle = f === 'paid' ? 'bg-emerald-50 border-emerald-400 text-emerald-700'
+                  : f === 'transfer' ? 'bg-blue-50 border-blue-400 text-blue-700'
+                  : f === 'cod' ? 'bg-red-50 border-red-400 text-red-600'
+                  : 'bg-slate-800 border-slate-800 text-white'
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setPaymentFilter(f)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                      paymentFilter === f ? activeStyle : 'bg-white border-card-border text-slate-400 hover:border-slate-300'
+                    }`}
+                  >
+                    {label} ({count})
+                  </button>
+                )
+              })}
             </div>
           )}
 

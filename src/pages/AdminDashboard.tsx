@@ -53,6 +53,7 @@ export default function AdminDashboard() {
   const [driverFilter, setDriverFilter] = useState<string | 'all'>('all')
   const [routeFilter, setRouteFilter] = useState<string | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'delivered'>('all')
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'cod' | 'transfer'>('all')
   const [search, setSearch] = useState('')
 
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null)
@@ -140,6 +141,14 @@ export default function AdminDashboard() {
 
     if (statusFilter !== 'all') {
       result = result.filter((p) => p.status === statusFilter)
+    }
+
+    if (paymentFilter !== 'all') {
+      result = result.filter((p) =>
+        paymentFilter === 'paid' ? p.payment_status === 'paid' :
+        paymentFilter === 'transfer' ? p.payment_status === 'transfer' :
+        (p.payment_status === 'cod' || !p.payment_status)
+      )
     }
 
     if (search.trim()) {
@@ -291,6 +300,17 @@ export default function AdminDashboard() {
           <option value="all">Toate</option>
           <option value="pending">Active</option>
           <option value="delivered">Livrate</option>
+        </select>
+
+        <select
+          value={paymentFilter}
+          onChange={(e) => setPaymentFilter(e.target.value as 'all' | 'paid' | 'cod' | 'transfer')}
+          className="px-4 py-2 rounded-full border border-card-border bg-white text-sm font-medium text-slate-600 focus:outline-none focus:ring-1 focus:ring-pill-green-border shrink-0"
+        >
+          <option value="all">Toate plățile</option>
+          <option value="paid">Achitat</option>
+          <option value="cod">La livrare</option>
+          <option value="transfer">Transfer</option>
         </select>
       </div>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -38,9 +38,16 @@ export default function DriverHome() {
   const [routeFilter, setRouteFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'delivered'>('all')
   const [search, setSearch] = useState('')
+  const [showCashReport, setShowCashReport] = useState(false)
 
   const allActive = parcels?.filter((p) => p.status === 'pending') || []
   const allDelivered = parcels?.filter((p) => p.status === 'delivered') || []
+
+  const codCollected = (parcels || []).filter(
+    (p) => p.payment_status === 'cod' && p.status === 'delivered' && p.cash_collected
+  )
+  const codGbp = codCollected.filter(p => p.currency === 'GBP').reduce((s, p) => s + p.price, 0)
+  const codEur = codCollected.filter(p => p.currency === 'EUR').reduce((s, p) => s + p.price, 0)
 
   // Rute unice din toate coletele
   const uniqueRoutes = Array.from(
@@ -99,12 +106,20 @@ export default function DriverHome() {
     <Layout
       title={profile?.username || 'Colete'}
       rightAction={
-        <button
-          onClick={logout}
-          className="px-4 py-1.5 rounded-full text-sm font-medium text-slate-400 border border-card-border hover:text-slate-600 hover:bg-gray-50 transition-colors"
-        >
-          Ieși
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setShowCashReport(true)}
+            className="px-3 py-1.5 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 transition-colors"
+          >
+            Dare de seamă
+          </button>
+          <button
+            onClick={logout}
+            className="px-3 py-1.5 rounded-full text-sm font-medium text-slate-400 border border-card-border hover:text-slate-600 hover:bg-gray-50 transition-colors"
+          >
+            Ieși
+          </button>
+        </div>
       }
     >
       {isLoading ? (
@@ -311,6 +326,53 @@ export default function DriverHome() {
               : undefined
           }
         />
+      )}
+
+      {/* Dare de seama Modal */}
+      {showCashReport && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 flex items-end sm:items-center justify-center">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col border border-card-border">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-card-border shrink-0">
+              <div>
+                <h2 className="text-lg font-extrabold text-slate-800">Dare de seamă</h2>
+                <p className="text-xs text-slate-400">COD marcate livrate + achitate</p>
+              </div>
+              <button
+                onClick={() => setShowCashReport(false)}
+                className="w-9 h-9 flex items-center justify-center rounded-full border border-card-border text-slate-400 hover:text-slate-600 hover:bg-gray-50"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto px-5 py-4 space-y-2">
+              {codCollected.length === 0 ? (
+                <p className="text-center text-slate-400 py-8">Niciun colet COD achitat încă.</p>
+              ) : (
+                <>
+                  {codCollected.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between px-4 py-3 rounded-2xl border border-card-border">
+                      <div className="min-w-0">
+                        <span className="font-bold text-slate-800 text-sm">{p.human_id}</span>
+                        <span className="text-xs text-slate-400 ml-2">{p.receiver_details.name}</span>
+                      </div>
+                      <span className="text-sm font-bold text-emerald-700 ml-3 whitespace-nowrap">
+                        {formatPrice(p.price, p.currency)}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="rounded-2xl bg-slate-800 px-4 py-3 flex items-center justify-between mt-2">
+                    <span className="text-sm font-bold text-white">Total</span>
+                    <span className="text-sm font-bold text-white">
+                      {[codGbp > 0 && `£${codGbp.toFixed(2)}`, codEur > 0 && `€${codEur.toFixed(2)}`].filter(Boolean).join(' + ')}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Feedback Modal */}

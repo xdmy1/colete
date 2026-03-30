@@ -67,6 +67,7 @@ export default function AdminDashboard() {
   const deleteParcel = useDeleteParcel()
   const [editMode, setEditMode] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [showCashReport, setShowCashReport] = useState(false)
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -173,6 +174,24 @@ export default function AdminDashboard() {
   const totalActive = parcels?.filter((p) => p.status === 'pending').length || 0
   const totalDelivered = parcels?.filter((p) => p.status === 'delivered').length || 0
 
+  // Dare de seama: COD livrate + achitate, grupate pe sofer
+  const cashReport = useMemo(() => {
+    const codCollected = (parcels || []).filter(
+      (p) => p.payment_status === 'cod' && p.status === 'delivered' && p.cash_collected
+    )
+    const byDriver = new Map<string, Parcel[]>()
+    for (const p of codCollected) {
+      const list = byDriver.get(p.driver_id) || []
+      list.push(p)
+      byDriver.set(p.driver_id, list)
+    }
+    return Array.from(byDriver.entries()).map(([driverId, items]) => {
+      const gbp = items.filter(p => p.currency === 'GBP').reduce((s, p) => s + p.price, 0)
+      const eur = items.filter(p => p.currency === 'EUR').reduce((s, p) => s + p.price, 0)
+      return { driverId, items, gbp, eur }
+    }).sort((a, b) => getDriverName(a.driverId).localeCompare(getDriverName(b.driverId)))
+  }, [parcels, drivers])
+
   return (
     <Layout
       title={selectMode ? `${selectedIds.size} selectate` : 'Admin'}
@@ -191,6 +210,12 @@ export default function AdminDashboard() {
               className="px-3 py-1.5 rounded-full text-sm font-medium text-emerald-600 border border-pill-green-border hover:bg-pill-green-bg transition-colors"
             >
               Selectează
+            </button>
+            <button
+              onClick={() => setShowCashReport(true)}
+              className="px-3 py-1.5 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 transition-colors"
+            >
+              Dare de seamă
             </button>
             <button
               onClick={() => navigate('/archive')}
@@ -523,6 +548,74 @@ export default function AdminDashboard() {
             >
               Anulează
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Dare de seama Modal */}
+      {showCashReport && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 flex items-end sm:items-center justify-center">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col border border-card-border">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-card-border shrink-0">
+              <div>
+                <h2 className="text-lg font-extrabold text-slate-800">Dare de seamă</h2>
+                <p className="text-xs text-slate-400">COD marcate livrate + achitate</p>
+              </div>
+              <button
+                onClick={() => setShowCashReport(false)}
+                className="w-9 h-9 flex items-center justify-center rounded-full border border-card-border text-slate-400 hover:text-slate-600 hover:bg-gray-50"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto px-5 py-4 space-y-5">
+              {cashReport.length === 0 ? (
+                <p className="text-center text-slate-400 py-8">Niciun colet COD achitat încă.</p>
+              ) : (
+                <>
+                  {cashReport.map(({ driverId, items, gbp, eur }) => (
+                    <div key={driverId} className="rounded-2xl border border-card-border overflow-hidden">
+                      <div className="bg-blue-50 border-b border-blue-100 px-4 py-2.5 flex items-center justify-between">
+                        <span className="font-bold text-blue-800 text-sm">{getDriverName(driverId)}</span>
+                        <span className="text-xs font-bold text-blue-700">
+                          {gbp > 0 && `£${gbp.toFixed(2)}`}
+                          {gbp > 0 && eur > 0 && ' + '}
+                          {eur > 0 && `€${eur.toFixed(2)}`}
+                        </span>
+                      </div>
+                      <div className="divide-y divide-card-border">
+                        {items.map((p) => (
+                          <div key={p.id} className="px-4 py-2.5 flex items-center justify-between">
+                            <div className="min-w-0">
+                              <span className="font-bold text-slate-800 text-sm">{p.human_id}</span>
+                              <span className="text-xs text-slate-400 ml-2 truncate">{p.receiver_details.name}</span>
+                            </div>
+                            <span className="text-sm font-bold text-emerald-700 ml-3 whitespace-nowrap">
+                              {formatPrice(p.price, p.currency)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="rounded-2xl bg-slate-800 px-4 py-3 flex items-center justify-between">
+                    <span className="text-sm font-bold text-white">Total general</span>
+                    <span className="text-sm font-bold text-white">
+                      {(() => {
+                        const totalGbp = cashReport.reduce((s, r) => s + r.gbp, 0)
+                        const totalEur = cashReport.reduce((s, r) => s + r.eur, 0)
+                        const parts = []
+                        if (totalGbp > 0) parts.push(`£${totalGbp.toFixed(2)}`)
+                        if (totalEur > 0) parts.push(`€${totalEur.toFixed(2)}`)
+                        return parts.join(' + ')
+                      })()}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

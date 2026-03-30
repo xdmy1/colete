@@ -72,7 +72,7 @@ export default function DriverHome() {
   }
 
   const activeParcels = applyFilters(allActive, true)
-  const deliveredParcels = applyFilters(allDelivered)
+  const deliveredParcels = applyFilters(allDelivered, true)
 
   function handleMarkDelivered() {
     setShowFeedback(true)
@@ -195,34 +195,32 @@ export default function DriverHome() {
             </div>
           )}
 
-          {/* Payment filter — doar pentru sectiunea activa */}
-          {statusFilter !== 'delivered' && (
-            <div className="flex gap-2 mb-4 flex-wrap">
-              {(['all', 'paid', 'cod', 'transfer'] as const).map((f) => {
-                const base = applyFilters(allActive)
-                const count = f === 'all' ? base.length
-                  : f === 'paid' ? base.filter(p => p.payment_status === 'paid').length
-                  : f === 'transfer' ? base.filter(p => p.payment_status === 'transfer').length
-                  : base.filter(p => p.payment_status === 'cod' || !p.payment_status).length
-                const label = f === 'all' ? 'Toate' : f === 'paid' ? 'Achitat' : f === 'transfer' ? 'Transfer' : 'La livrare'
-                const activeStyle = f === 'paid' ? 'bg-emerald-50 border-emerald-400 text-emerald-700'
-                  : f === 'transfer' ? 'bg-blue-50 border-blue-400 text-blue-700'
-                  : f === 'cod' ? 'bg-red-50 border-red-400 text-red-600'
-                  : 'bg-slate-800 border-slate-800 text-white'
-                return (
-                  <button
-                    key={f}
-                    onClick={() => setPaymentFilter(f)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                      paymentFilter === f ? activeStyle : 'bg-white border-card-border text-slate-400 hover:border-slate-300'
-                    }`}
-                  >
-                    {label} ({count})
-                  </button>
-                )
-              })}
-            </div>
-          )}
+          {/* Payment filter */}
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {(['all', 'paid', 'cod', 'transfer'] as const).map((f) => {
+              const base = applyFilters(parcels || [])
+              const count = f === 'all' ? base.length
+                : f === 'paid' ? base.filter(p => p.payment_status === 'paid').length
+                : f === 'transfer' ? base.filter(p => p.payment_status === 'transfer').length
+                : base.filter(p => p.payment_status === 'cod' || !p.payment_status).length
+              const label = f === 'all' ? 'Toate' : f === 'paid' ? 'Achitat' : f === 'transfer' ? 'Transfer' : 'La livrare'
+              const activeStyle = f === 'paid' ? 'bg-emerald-50 border-emerald-400 text-emerald-700'
+                : f === 'transfer' ? 'bg-blue-50 border-blue-400 text-blue-700'
+                : f === 'cod' ? 'bg-red-50 border-red-400 text-red-600'
+                : 'bg-slate-800 border-slate-800 text-white'
+              return (
+                <button
+                  key={f}
+                  onClick={() => setPaymentFilter(f)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                    paymentFilter === f ? activeStyle : 'bg-white border-card-border text-slate-400 hover:border-slate-300'
+                  }`}
+                >
+                  {label} ({count})
+                </button>
+              )
+            })}
+          </div>
 
           {/* Active parcels */}
           {statusFilter !== 'delivered' && (

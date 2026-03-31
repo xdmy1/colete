@@ -143,7 +143,7 @@ export default function StepDetails({
   const { data: contacts = [] } = useContacts()
 
   const currency = getCurrency(originCode, deliveryDestination)
-  const autoPrice = calculatePrice(weight)
+  const autoPrice = calculatePrice(weight, originCode, deliveryDestination)
   const displayPrice = priceAuto ? autoPrice : manualPrice
 
   const isValid =

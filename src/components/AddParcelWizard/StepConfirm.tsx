@@ -14,7 +14,7 @@ export default function StepConfirm({
   isSubmitting,
 }: StepConfirmProps) {
   const currency = getCurrency(data.origin_code, data.delivery_destination)
-  const price = data.manual_price ?? calculatePrice(data.weight)
+  const price = data.manual_price ?? calculatePrice(data.weight, data.origin_code, data.delivery_destination)
 
   return (
     <div className="space-y-5">

@@ -48,13 +48,11 @@ export function buildHumanId(
 }
 
 // ── Price calculation ──
-// Pretul = greutate * 1.5
-// Moneda: GBP daca se livreaza in UK, EUR daca BE/NL
+// UK routes: £2/kg  |  altele: €1.5/kg
 
-const PRICE_PER_KG = 1.5
-
-export function calculatePrice(weightKg: number): number {
-  return Math.round(weightKg * PRICE_PER_KG * 100) / 100
+export function calculatePrice(weightKg: number, origin: DestinationCode, destination: DestinationCode): number {
+  const rate = (origin === 'UK' || destination === 'UK') ? 2.0 : 1.5
+  return Math.round(weightKg * rate * 100) / 100
 }
 
 export function getCurrency(origin: DestinationCode, destination: DestinationCode): 'GBP' | 'EUR' {

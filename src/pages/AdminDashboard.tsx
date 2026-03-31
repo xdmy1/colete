@@ -18,7 +18,6 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useAuth } from '../hooks/useAuth'
 import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel } from '../hooks/useParcels'
-import { calculatePrice } from '../lib/utils'
 import { formatPrice, getDestLabel, ROUTES } from '../lib/utils'
 import { exportParcelsToExcel, exportCashReportToExcel } from '../lib/exportExcel'
 import type { Parcel } from '../lib/types'

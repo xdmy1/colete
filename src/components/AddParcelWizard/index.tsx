@@ -2,6 +2,16 @@ import { useState } from 'react'
 import type { NewParcelData, ContactDetails } from '../../lib/types'
 import type { DestinationCode } from '../../lib/utils'
 import { getCurrentWeekId, weekIdParts } from '../../lib/utils'
+
+function getIdPrefix(origin: DestinationCode, dest: DestinationCode): string {
+  const foreign = dest !== 'MD' ? dest : origin
+  switch (foreign) {
+    case 'BE': return 'B'
+    case 'NL': return 'OL'
+    case 'DE': return 'D'
+    default:   return '#'
+  }
+}
 import StepDestination from './StepDestination'
 import StepDetails from './StepDetails'
 import StepPhoto from './StepPhoto'
@@ -101,9 +111,15 @@ export default function AddParcelWizard({
               />
             </svg>
           </button>
-          <span className="text-xs font-medium text-slate-400">
-            Pas {step} din {totalSteps}
-          </span>
+          {step > 1 ? (
+            <span className="px-4 py-1 rounded-full bg-pill-green-bg border border-pill-green-border text-emerald-800 text-sm font-extrabold tracking-widest">
+              {getIdPrefix(data.origin_code, data.delivery_destination)}···
+            </span>
+          ) : (
+            <span className="text-xs font-medium text-slate-400">
+              Pas {step} din {totalSteps}
+            </span>
+          )}
           <button
             onClick={onCancel}
             className="px-3 py-1.5 rounded-full text-sm font-medium text-slate-400 border border-card-border hover:bg-gray-50 transition-colors"

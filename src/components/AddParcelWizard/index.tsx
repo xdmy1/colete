@@ -1,17 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { NewParcelData, ContactDetails } from '../../lib/types'
 import type { DestinationCode } from '../../lib/utils'
-import { getCurrentWeekId, weekIdParts } from '../../lib/utils'
+import { getCurrentWeekId, weekIdParts, buildHumanId } from '../../lib/utils'
+import { supabase } from '../../lib/supabase'
 
-function getIdPrefix(origin: DestinationCode, dest: DestinationCode): string {
-  const foreign = dest !== 'MD' ? dest : origin
-  switch (foreign) {
-    case 'BE': return 'B'
-    case 'NL': return 'OL'
-    case 'DE': return 'D'
-    default:   return '#'
-  }
-}
 import StepDestination from './StepDestination'
 import StepDetails from './StepDetails'
 import StepPhoto from './StepPhoto'
@@ -22,6 +14,7 @@ interface AddParcelWizardProps {
   onCancel: () => void
   isSubmitting: boolean
   routes: { origin: DestinationCode; destination: DestinationCode; label: string }[]
+  driverId: string
 }
 
 const emptyContact: ContactDetails = { name: '', phone: '', address: '' }
@@ -31,8 +24,10 @@ export default function AddParcelWizard({
   onCancel,
   isSubmitting,
   routes,
+  driverId: _driverId,
 }: AddParcelWizardProps) {
   const [step, setStep] = useState(1)
+  const [previewHumanId, setPreviewHumanId] = useState<string | null>(null)
   const [data, setData] = useState<NewParcelData>({
     origin_code: 'MD',
     delivery_destination: 'UK',
@@ -44,6 +39,22 @@ export default function AddParcelWizard({
     weight: 0,
     photos: [],
   })
+
+  useEffect(() => {
+    if (step < 2) return
+    setPreviewHumanId(null)
+    supabase
+      .from('parcels')
+      .select('numeric_id')
+      .eq('origin_code', data.origin_code)
+      .eq('delivery_destination', data.delivery_destination)
+      .order('numeric_id', { ascending: false })
+      .limit(1)
+      .then(({ data: rows }) => {
+        const nextNum = ((rows?.[0]?.numeric_id) ?? 0) + 1
+        setPreviewHumanId(buildHumanId(data.origin_code, data.delivery_destination, nextNum))
+      })
+  }, [step, data.origin_code, data.delivery_destination])
 
   const totalSteps = 4
   const progress = (step / totalSteps) * 100
@@ -113,7 +124,7 @@ export default function AddParcelWizard({
           </button>
           {step > 1 ? (
             <span className="px-4 py-1 rounded-full bg-pill-green-bg border border-pill-green-border text-emerald-800 text-sm font-extrabold tracking-widest">
-              {getIdPrefix(data.origin_code, data.delivery_destination)}···
+              {previewHumanId ?? '···'}
             </span>
           ) : (
             <span className="text-xs font-medium text-slate-400">

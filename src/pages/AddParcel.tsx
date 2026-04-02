@@ -108,6 +108,7 @@ export default function AddParcel() {
       onCancel={() => navigate('/')}
       isSubmitting={addParcel.isPending}
       routes={availableRoutes}
+      driverId={effectiveDriverId || ''}
     />
   )
 }

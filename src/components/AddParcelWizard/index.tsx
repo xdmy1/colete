@@ -24,7 +24,7 @@ export default function AddParcelWizard({
   onCancel,
   isSubmitting,
   routes,
-  driverId: _driverId,
+  driverId,
 }: AddParcelWizardProps) {
   const [step, setStep] = useState(1)
   const [previewHumanId, setPreviewHumanId] = useState<string | null>(null)
@@ -41,20 +41,42 @@ export default function AddParcelWizard({
   })
 
   useEffect(() => {
-    if (step < 2) return
+    if (step < 2 || !driverId) return
     setPreviewHumanId(null)
-    supabase
-      .from('parcels')
-      .select('numeric_id')
-      .eq('origin_code', data.origin_code)
-      .eq('delivery_destination', data.delivery_destination)
-      .order('numeric_id', { ascending: false })
-      .limit(1)
-      .then(({ data: rows }) => {
-        const nextNum = ((rows?.[0]?.numeric_id) ?? 0) + 1
-        setPreviewHumanId(buildHumanId(data.origin_code, data.delivery_destination, nextNum))
-      })
-  }, [step, data.origin_code, data.delivery_destination])
+
+    async function fetchPreview() {
+      // 1. Ia range-ul șoferului pentru ruta asta
+      const { data: rangeRow } = await supabase
+        .from('driver_route_ranges')
+        .select('range_start, range_end')
+        .eq('driver_id', driverId)
+        .eq('origin', data.origin_code)
+        .eq('destination', data.delivery_destination)
+        .limit(1)
+        .single()
+
+      if (!rangeRow) return // șoferul nu are range pentru ruta asta
+
+      const { range_start, range_end } = rangeRow
+
+      // 2. Cel mai mare numeric_id deja folosit în range-ul lui
+      const { data: rows } = await supabase
+        .from('parcels')
+        .select('numeric_id')
+        .eq('driver_id', driverId)
+        .eq('origin_code', data.origin_code)
+        .eq('delivery_destination', data.delivery_destination)
+        .gte('numeric_id', range_start)
+        .lte('numeric_id', range_end)
+        .order('numeric_id', { ascending: false })
+        .limit(1)
+
+      const nextNum = rows?.[0]?.numeric_id ? rows[0].numeric_id + 1 : range_start
+      setPreviewHumanId(buildHumanId(data.origin_code, data.delivery_destination, nextNum))
+    }
+
+    fetchPreview()
+  }, [step, data.origin_code, data.delivery_destination, driverId])
 
   const totalSteps = 4
   const progress = (step / totalSteps) * 100

@@ -42,6 +42,7 @@ export interface Parcel {
   weight: number
   price: number
   currency: 'GBP' | 'EUR'
+  paid_mdl_amount: number | null  // suma achitata in lei MDL (optional)
   photo_url: string | null      // legacy
   photo_urls: string[]          // new (1-3 poze)
   route_order: number
@@ -67,5 +68,6 @@ export interface NewParcelData {
   transfer_recipient?: string
   weight: number
   manual_price?: number
+  paid_mdl_amount?: number               // suma in lei daca au platit in MDL
   photos: File[]
 }

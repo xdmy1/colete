@@ -59,11 +59,13 @@ export default function AddParcelWizard({
 
       const { range_start, range_end } = rangeRow
 
-      // 2. Cel mai mare numeric_id deja folosit în range-ul lui
+      // 2. Cel mai mare numeric_id deja folosit în range-ul lui (săptămâna curentă, inclusiv arhivate)
+      const weekId = getCurrentWeekId()
       const { data: rows } = await supabase
         .from('parcels')
         .select('numeric_id')
         .eq('driver_id', driverId)
+        .eq('week_id', weekId)
         .eq('origin_code', data.origin_code)
         .eq('delivery_destination', data.delivery_destination)
         .gte('numeric_id', range_start)
@@ -102,6 +104,7 @@ export default function AddParcelWizard({
     transfer_recipient?: string
     weight: number
     manual_price?: number
+    paid_mdl_amount?: number
   }) {
     updateData(details)
     setStep(3)

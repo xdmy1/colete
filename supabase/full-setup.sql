@@ -177,15 +177,17 @@ BEGIN
       p_driver_id, p_origin_code, p_delivery_destination;
   END IF;
 
+  -- Cauta maximul in TOATE coletele saptamanii (inclusiv arhivate/livrate)
+  -- Astfel numerotarea continua corect chiar daca coletele anterioare au fost livrate
   SELECT COALESCE(MAX(numeric_id), v_range_start - 1) INTO v_max_used
   FROM public.parcels
-  WHERE driver_id          = p_driver_id
-    AND week_id            = p_week_id
-    AND origin_code        = p_origin_code
-    AND delivery_destination = p_delivery_destination
+  WHERE driver_id             = p_driver_id
+    AND week_id               = p_week_id
+    AND origin_code           = p_origin_code
+    AND delivery_destination  = p_delivery_destination
     AND numeric_id >= v_range_start
-    AND numeric_id <  v_range_end
-    AND is_archived = false;
+    AND numeric_id <  v_range_end;
+    -- FARA filtru is_archived: coletele livrate/arhivate isi pastreaza numarul
 
   RETURN v_max_used + 1;
 END;

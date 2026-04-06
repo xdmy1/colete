@@ -125,6 +125,7 @@ export interface CashReportGroup {
   items: Parcel[]
   gbp: number
   eur: number
+  mdl: number
 }
 
 function downloadBuffer(buffer: ExcelJS.Buffer, filename: string) {
@@ -168,6 +169,7 @@ export async function exportCashReportToExcel(
 
   let totalGbp = 0
   let totalEur = 0
+  let totalMdl = 0
 
   for (const group of groups) {
     // Driver row
@@ -180,13 +182,16 @@ export async function exportCashReportToExcel(
 
     // Parcel rows
     for (const p of group.items) {
+      const amountStr = p.paid_mdl_amount
+        ? `${p.paid_mdl_amount.toFixed(0)} MDL`
+        : formatPrice(p.price, p.currency)
       const row = sheet.addRow([
         p.human_id,
         `${getDestLabel(p.origin_code)} → ${getDestLabel(p.delivery_destination)}`,
         p.receiver_details.name,
         p.receiver_details.phone,
         p.nr_bucati,
-        formatPrice(p.price, p.currency),
+        amountStr,
       ])
       row.height = 18
       row.alignment = { vertical: 'middle' }
@@ -197,6 +202,7 @@ export async function exportCashReportToExcel(
     const subtotalParts: string[] = []
     if (group.gbp > 0) subtotalParts.push(`£${group.gbp.toFixed(2)}`)
     if (group.eur > 0) subtotalParts.push(`€${group.eur.toFixed(2)}`)
+    if (group.mdl > 0) subtotalParts.push(`${group.mdl.toFixed(0)} MDL`)
 
     const subRow = sheet.addRow(['', '', '', '', `Subtotal ${group.driverName}:`, subtotalParts.join(' + ')])
     subRow.font = { bold: true, italic: true, color: { argb: 'FF1E40AF' } }
@@ -207,6 +213,7 @@ export async function exportCashReportToExcel(
 
     totalGbp += group.gbp
     totalEur += group.eur
+    totalMdl += group.mdl
 
     // Spacer
     sheet.addRow([])
@@ -216,6 +223,7 @@ export async function exportCashReportToExcel(
   const totalParts: string[] = []
   if (totalGbp > 0) totalParts.push(`£${totalGbp.toFixed(2)}`)
   if (totalEur > 0) totalParts.push(`€${totalEur.toFixed(2)}`)
+  if (totalMdl > 0) totalParts.push(`${totalMdl.toFixed(0)} MDL`)
 
   const totalRow = sheet.addRow(['', '', '', '', 'TOTAL GENERAL:', totalParts.join(' + ')])
   totalRow.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } }

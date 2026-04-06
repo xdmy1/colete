@@ -162,6 +162,7 @@ export function useAddParcel(driverId: string) {
         weight: parcelData.weight,
         price,
         currency,
+        paid_mdl_amount: parcelData.paid_mdl_amount ?? null,
         photo_url: photoUrls[0] ?? null,
         photo_urls: photoUrls,
         labels: [],
@@ -373,20 +374,22 @@ export function useMarkDelivered(_driverId: string) {
       clientSatisfied,
       deliveryNote,
       cashCollected,
+      mdlAmount,
     }: {
       parcelId: string
       clientSatisfied: boolean
       deliveryNote?: string
       cashCollected?: boolean
+      mdlAmount?: number | null
     }) => {
       const { error } = await supabase
         .from('parcels')
         .update({
           status: 'delivered',
-          is_archived: true,
           client_satisfied: clientSatisfied,
           delivery_note: deliveryNote || null,
           cash_collected: cashCollected ?? false,
+          paid_mdl_amount: mdlAmount ?? null,
           delivered_at: new Date().toISOString(),
         })
         .eq('id', parcelId)
@@ -396,5 +399,27 @@ export function useMarkDelivered(_driverId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['parcels'] })
     },
+  })
+}
+
+// Raport dare de seamă: toate coletele livrate cu cash_collected în săptămâna curentă
+export function useDriverCashReport(driverId: string | undefined) {
+  return useQuery({
+    queryKey: ['cash-report', driverId],
+    queryFn: async () => {
+      if (!driverId) return []
+      const { getCurrentWeekId } = await import('../lib/utils')
+      const weekId = getCurrentWeekId()
+      const { data, error } = await supabase
+        .from('parcels')
+        .select('*')
+        .eq('driver_id', driverId)
+        .eq('week_id', weekId)
+        .eq('cash_collected', true)
+        .eq('status', 'delivered')
+      if (error) throw error
+      return data as import('../lib/types').Parcel[]
+    },
+    enabled: !!driverId,
   })
 }

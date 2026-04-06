@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import {
   useDriverParcels,
+  useDriverCashReport,
   useMarkDelivered,
   useUpdateParcel,
 } from '../hooks/useParcels'
@@ -25,6 +26,7 @@ export default function DriverHome() {
   const { profile, logout } = useAuth()
   const navigate = useNavigate()
   const { data: parcels, isLoading } = useDriverParcels(profile?.id)
+  const { data: cashReportParcels = [] } = useDriverCashReport(profile?.id)
   const markDelivered = useMarkDelivered(profile?.id || '')
   const updateParcel = useUpdateParcel()
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null)
@@ -35,6 +37,7 @@ export default function DriverHome() {
   )
   const [feedbackNote, setFeedbackNote] = useState('')
   const [cashCollected, setCashCollected] = useState(false)
+  const [mdlAmount, setMdlAmount] = useState<string>('')
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'cod' | 'transfer'>('all')
   const [routeFilter, setRouteFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'delivered'>('all')
@@ -44,11 +47,12 @@ export default function DriverHome() {
   const allActive = parcels?.filter((p) => p.status === 'pending') || []
   const allDelivered = parcels?.filter((p) => p.status === 'delivered') || []
 
-  const codCollected = (parcels || []).filter(
-    (p) => p.payment_status === 'cod' && p.status === 'delivered' && p.cash_collected
-  )
-  const codGbp = codCollected.filter(p => p.currency === 'GBP').reduce((s, p) => s + p.price, 0)
-  const codEur = codCollected.filter(p => p.currency === 'EUR').reduce((s, p) => s + p.price, 0)
+  // Dare de seamă: toate coletele cu cash primit (COD livrat + achitat cash de expeditor)
+  // Folosim hook separat ca să includă și coletele arhivate (livrate în aceeași săptămână)
+  const codCollected = cashReportParcels
+  const codGbp = codCollected.filter(p => p.currency === 'GBP' && !p.paid_mdl_amount).reduce((s, p) => s + p.price, 0)
+  const codEur = codCollected.filter(p => p.currency === 'EUR' && !p.paid_mdl_amount).reduce((s, p) => s + p.price, 0)
+  const codMdl = codCollected.reduce((s, p) => s + (p.paid_mdl_amount ?? 0), 0)
 
   // Rute unice din toate coletele
   const uniqueRoutes = Array.from(
@@ -89,11 +93,14 @@ export default function DriverHome() {
   async function submitDelivery() {
     if (!selectedParcel || feedbackSatisfied === null) return
 
+    const parsedMdl = mdlAmount ? parseFloat(mdlAmount) : null
+
     await markDelivered.mutateAsync({
       parcelId: selectedParcel.id,
       clientSatisfied: feedbackSatisfied,
       deliveryNote: feedbackNote || undefined,
       cashCollected,
+      mdlAmount: cashCollected && parsedMdl && parsedMdl > 0 ? parsedMdl : null,
     })
 
     setSelectedParcel(null)
@@ -101,6 +108,7 @@ export default function DriverHome() {
     setFeedbackSatisfied(null)
     setFeedbackNote('')
     setCashCollected(false)
+    setMdlAmount('')
   }
 
   return (
@@ -336,7 +344,7 @@ export default function DriverHome() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-card-border shrink-0">
               <div>
                 <h2 className="text-lg font-extrabold text-slate-800">Dare de seamă</h2>
-                <p className="text-xs text-slate-400">COD marcate livrate + achitate</p>
+                <p className="text-xs text-slate-400">Toate încasările cash din săptămâna curentă</p>
               </div>
               <div className="flex items-center gap-2">
                 {codCollected.length > 0 && (
@@ -346,6 +354,7 @@ export default function DriverHome() {
                       items: codCollected,
                       gbp: codGbp,
                       eur: codEur,
+                      mdl: codMdl,
                     }], `dare_de_seama_${profile?.username || 'sofer'}.xlsx`)}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-blue-600 border border-blue-200 hover:bg-blue-50 transition-colors"
                   >
@@ -367,24 +376,37 @@ export default function DriverHome() {
             </div>
             <div className="overflow-y-auto px-5 py-4 space-y-2">
               {codCollected.length === 0 ? (
-                <p className="text-center text-slate-400 py-8">Niciun colet COD achitat încă.</p>
+                <p className="text-center text-slate-400 py-8">Nicio încasare cash în săptămâna curentă.</p>
               ) : (
                 <>
                   {codCollected.map((p) => (
                     <div key={p.id} className="flex items-center justify-between px-4 py-3 rounded-2xl border border-card-border">
                       <div className="min-w-0">
                         <span className="font-bold text-slate-800 text-sm">{p.human_id}</span>
-                        <span className="text-xs text-slate-400 ml-2">{p.receiver_details.name}</span>
+                        <span className="text-xs text-slate-400 ml-2">
+                          {p.payment_status === 'paid' ? p.sender_details.name : p.receiver_details.name}
+                        </span>
+                        {p.payment_status === 'paid' && (
+                          <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200 font-semibold">
+                            expeditor
+                          </span>
+                        )}
                       </div>
                       <span className="text-sm font-bold text-emerald-700 ml-3 whitespace-nowrap">
-                        {formatPrice(p.price, p.currency)}
+                        {p.paid_mdl_amount
+                          ? `${p.paid_mdl_amount.toFixed(0)} MDL`
+                          : formatPrice(p.price, p.currency)}
                       </span>
                     </div>
                   ))}
                   <div className="rounded-2xl bg-slate-800 px-4 py-3 flex items-center justify-between mt-2">
                     <span className="text-sm font-bold text-white">Total</span>
                     <span className="text-sm font-bold text-white">
-                      {[codGbp > 0 && `£${codGbp.toFixed(2)}`, codEur > 0 && `€${codEur.toFixed(2)}`].filter(Boolean).join(' + ')}
+                      {[
+                        codGbp > 0 && `£${codGbp.toFixed(2)}`,
+                        codEur > 0 && `€${codEur.toFixed(2)}`,
+                        codMdl > 0 && `${codMdl.toFixed(0)} MDL`,
+                      ].filter(Boolean).join(' + ')}
                     </span>
                   </div>
                 </>
@@ -425,18 +447,37 @@ export default function DriverHome() {
               </button>
             </div>
 
-            {selectedParcel.payment_status === 'cod' && (
-              <label className="flex items-center gap-3 px-4 py-3.5 rounded-2xl border border-card-border cursor-pointer select-none hover:bg-gray-50 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={cashCollected}
-                  onChange={(e) => setCashCollected(e.target.checked)}
-                  className="w-5 h-5 accent-emerald-600 rounded"
-                />
-                <span className="text-base font-semibold text-slate-700">
-                  S-a achitat — <span className="text-emerald-700">{formatPrice(selectedParcel.price, selectedParcel.currency)}</span>
-                </span>
-              </label>
+            {(selectedParcel.payment_status === 'cod' || selectedParcel.payment_status === 'paid') && (
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 px-4 py-3.5 rounded-2xl border border-card-border cursor-pointer select-none hover:bg-gray-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cashCollected}
+                    onChange={(e) => setCashCollected(e.target.checked)}
+                    className="w-5 h-5 accent-emerald-600 rounded"
+                  />
+                  <span className="text-base font-semibold text-slate-700">
+                    {selectedParcel.payment_status === 'paid' ? 'Achitat cash de expeditor' : 'S-a achitat'} —{' '}
+                    <span className="text-emerald-700">{formatPrice(selectedParcel.price, selectedParcel.currency)}</span>
+                  </span>
+                </label>
+                {cashCollected && (
+                  <div className="px-1">
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">
+                      Suma în lei (MDL) — dacă au plătit în lei
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="ex: 890 lei"
+                      value={mdlAmount}
+                      onChange={(e) => setMdlAmount(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border text-base focus:outline-none focus:ring-1 focus:ring-pill-green-border focus:border-pill-green-border transition-colors"
+                    />
+                  </div>
+                )}
+              </div>
             )}
 
             <textarea

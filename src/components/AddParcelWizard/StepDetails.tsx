@@ -17,6 +17,7 @@ interface StepDetailsProps {
     transfer_recipient?: string
     weight: number
     manual_price?: number
+    paid_mdl_amount?: number
   }) => void
   initialData: {
     sender_details: ContactDetails
@@ -27,6 +28,7 @@ interface StepDetailsProps {
     transfer_recipient?: string
     weight: number
     manual_price?: number
+    paid_mdl_amount?: number
   }
 }
 
@@ -135,6 +137,7 @@ export default function StepDetails({
   const [nrBucati, setNrBucati] = useState(initialData.nr_bucati || 1)
   const [paymentStatus, setPaymentStatus] = useState<'paid' | 'cod' | 'transfer'>(initialData.payment_status || 'cod')
   const [transferRecipient, setTransferRecipient] = useState(initialData.transfer_recipient || '')
+  const [mdlAmount, setMdlAmount] = useState(initialData.paid_mdl_amount ? String(initialData.paid_mdl_amount) : '')
   const [weight, setWeight] = useState(initialData.weight || 0)
   const [priceAuto, setPriceAuto] = useState(initialData.manual_price === undefined)
   const [manualPrice, setManualPrice] = useState(initialData.manual_price ?? 0)
@@ -156,6 +159,7 @@ export default function StepDetails({
 
   function handleSubmit() {
     if (!isValid) return
+    const parsedMdl = mdlAmount ? parseFloat(mdlAmount) : undefined
     onComplete({
       sender_details: sender,
       receiver_details: receiver,
@@ -165,6 +169,7 @@ export default function StepDetails({
       transfer_recipient: paymentStatus === 'transfer' ? transferRecipient : undefined,
       weight,
       manual_price: priceAuto ? undefined : manualPrice,
+      paid_mdl_amount: parsedMdl && parsedMdl > 0 ? parsedMdl : undefined,
     })
   }
 
@@ -377,6 +382,22 @@ export default function StepDetails({
             className={inputCls}
             autoFocus
           />
+        )}
+        {paymentStatus !== 'transfer' && (
+          <div>
+            <label className="text-xs font-semibold text-slate-500 block mb-1">
+              Suma în lei MDL — dacă achită în lei
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              placeholder="ex: 890 lei"
+              value={mdlAmount}
+              onChange={(e) => setMdlAmount(e.target.value)}
+              className={inputCls}
+            />
+          </div>
         )}
       </div>
 

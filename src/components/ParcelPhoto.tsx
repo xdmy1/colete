@@ -2,26 +2,15 @@ import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useSignedPhotoUrl } from '../hooks/usePhotoUrl'
 
-// Sub-component: o singura poza cu signed URL propriu
-function PhotoImage({ path, className, onClick }: { path: string; className: string; onClick?: () => void }) {
+function PhotoImage({ path, className }: { path: string; className: string }) {
   const { data: url, isLoading } = useSignedPhotoUrl(path)
 
   if (isLoading || !url) {
     return <div className={className + ' bg-gray-100 animate-pulse'} />
   }
-  return (
-    <img
-      src={url}
-      alt="Colet"
-      className={className}
-      loading="eager"
-      onClick={onClick}
-      style={onClick ? { cursor: 'zoom-in' } : undefined}
-    />
-  )
+  return <img src={url} alt="Colet" className={className} loading="eager" />
 }
 
-// Lightbox fullscreen
 function Lightbox({ path, onClose }: { path: string; onClose: () => void }) {
   const { data: url } = useSignedPhotoUrl(path)
 
@@ -65,6 +54,7 @@ export default function ParcelPhoto({
   const [index, setIndex] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const touchStartX = useRef<number | null>(null)
+  const touchMoved = useRef(false)
 
   if (photoPaths.length === 0) return null
 
@@ -75,6 +65,13 @@ export default function ParcelPhoto({
 
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX
+    touchMoved.current = false
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    if (touchStartX.current !== null) {
+      const delta = Math.abs(e.touches[0].clientX - touchStartX.current)
+      if (delta > 10) touchMoved.current = true
+    }
   }
   function onTouchEnd(e: React.TouchEvent) {
     if (touchStartX.current === null) return
@@ -86,12 +83,16 @@ export default function ParcelPhoto({
 
   return (
     <>
-      <div className="relative select-none" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        <PhotoImage
-          path={photoPaths[index]}
-          className={className}
-          onClick={() => setLightboxOpen(true)}
-        />
+      <div
+        className="relative select-none cursor-zoom-in"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onClick={() => {
+          if (!touchMoved.current) setLightboxOpen(true)
+        }}
+      >
+        <PhotoImage path={photoPaths[index]} className={className} />
 
         {!single && (
           <>
@@ -123,7 +124,6 @@ export default function ParcelPhoto({
           </>
         )}
 
-        {/* Zoom hint icon */}
         <div className="absolute bottom-2 right-2 w-6 h-6 bg-black/40 rounded-full flex items-center justify-center pointer-events-none">
           <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="8" />

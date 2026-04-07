@@ -461,22 +461,20 @@ export default function DriverHome() {
                     <span className="text-emerald-700">{formatPrice(selectedParcel.price, selectedParcel.currency)}</span>
                   </span>
                 </label>
-                {cashCollected && (
-                  <div className="px-1">
-                    <label className="text-xs font-semibold text-slate-500 block mb-1">
-                      Suma în lei (MDL) — dacă au plătit în lei
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      placeholder="ex: 890 lei"
-                      value={mdlAmount}
-                      onChange={(e) => setMdlAmount(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-card-border text-base focus:outline-none focus:ring-1 focus:ring-pill-green-border focus:border-pill-green-border transition-colors"
-                    />
-                  </div>
-                )}
+                <div className="px-1">
+                  <label className="text-xs font-semibold text-slate-500 block mb-1">
+                    Suma în lei (MDL) — dacă au plătit în lei
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="ex: 890 lei"
+                    value={mdlAmount}
+                    onChange={(e) => setMdlAmount(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-card-border text-base focus:outline-none focus:ring-1 focus:ring-pill-green-border focus:border-pill-green-border transition-colors"
+                  />
+                </div>
               </div>
             )}
 

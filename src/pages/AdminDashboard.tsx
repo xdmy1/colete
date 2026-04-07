@@ -190,9 +190,10 @@ export default function AdminDashboard() {
       byDriver.set(p.driver_id, list)
     }
     return Array.from(byDriver.entries()).map(([driverId, items]) => {
-      const gbp = items.filter(p => p.currency === 'GBP').reduce((s, p) => s + p.price, 0)
-      const eur = items.filter(p => p.currency === 'EUR').reduce((s, p) => s + p.price, 0)
-      return { driverId, items, gbp, eur }
+      const gbp = items.filter(p => p.currency === 'GBP' && !p.paid_mdl_amount).reduce((s, p) => s + p.price, 0)
+      const eur = items.filter(p => p.currency === 'EUR' && !p.paid_mdl_amount).reduce((s, p) => s + p.price, 0)
+      const mdl = items.reduce((s, p) => s + (p.paid_mdl_amount ?? 0), 0)
+      return { driverId, items, gbp, eur, mdl }
     }).sort((a, b) => getDriverName(a.driverId).localeCompare(getDriverName(b.driverId)))
   }, [parcels, drivers])
 
@@ -580,7 +581,7 @@ export default function AdminDashboard() {
                 {cashReport.length > 0 && (
                   <button
                     onClick={() => exportCashReportToExcel(
-                      cashReport.map(r => ({ ...r, driverName: getDriverName(r.driverId) }))
+                      cashReport.map(r => ({ ...r, driverName: getDriverName(r.driverId), mdl: r.mdl ?? 0 }))
                     )}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-blue-600 border border-blue-200 hover:bg-blue-50 transition-colors"
                   >

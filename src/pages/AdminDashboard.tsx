@@ -587,7 +587,7 @@ export default function AdminDashboard() {
               Selectează șoferul căruia i le atribui:
             </p>
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {drivers?.filter(d => d.role === 'driver').map((driver) => (
+              {drivers?.map((driver) => (
                 <button
                   key={driver.id}
                   onClick={() => handleTransfer(driver.id)}

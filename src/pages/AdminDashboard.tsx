@@ -201,7 +201,7 @@ export default function AdminDashboard() {
 
   return (
     <Layout
-      title={selectMode ? `${selectedIds.size} selectate` : 'Admin'}
+      title={selectMode ? `${selectedIds.size} selectate` : (profile?.username || 'Admin')}
       rightAction={
         selectMode ? (
           <button

@@ -78,6 +78,20 @@ export function useAllDrivers() {
 }
 
 // Rutele disponibile ale unui sofer (din driver_route_ranges)
+// ADMIN: toate rutele tuturor soferilor (pentru filtrare in AddParcel)
+export function useAllDriverRoutes() {
+  return useQuery({
+    queryKey: ['driver-routes', 'all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('driver_route_ranges')
+        .select('driver_id, origin, destination')
+      if (error) throw error
+      return data as { driver_id: string; origin: string; destination: string }[]
+    },
+  })
+}
+
 export function useDriverRoutes(driverId: string | undefined) {
   return useQuery({
     queryKey: ['driver-routes', driverId],

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { useAddParcel, useAllDrivers, useDriverRoutes } from '../hooks/useParcels'
+import { useAddParcel, useAllDrivers, useDriverRoutes, useAllDriverRoutes } from '../hooks/useParcels'
 import type { NewParcelData } from '../lib/types'
 import { ROUTES, getDestLabel } from '../lib/utils'
 import type { DestinationCode } from '../lib/utils'
@@ -29,7 +29,20 @@ export default function AddParcel() {
     ? baseRoutes.filter(r => !excludedDest.includes(r.origin) && !excludedDest.includes(r.destination))
     : baseRoutes
 
-  const { data: drivers } = useAllDrivers()
+  const { data: allDrivers } = useAllDrivers()
+  const { data: allDriverRoutes } = useAllDriverRoutes()
+
+  // Daca adminul are excluded_destinations, arata doar soferii cu rute pe tarile permise
+  const drivers = isAdmin && excludedDest && excludedDest.length > 0
+    ? (() => {
+        const validDriverIds = new Set(
+          (allDriverRoutes || [])
+            .filter(r => !excludedDest.includes(r.origin) && !excludedDest.includes(r.destination))
+            .map(r => r.driver_id)
+        )
+        return (allDrivers || []).filter(d => validDriverIds.has(d.id))
+      })()
+    : (allDrivers || [])
   const addParcel = useAddParcel(effectiveDriverId || '')
 
   async function handleComplete(data: NewParcelData) {

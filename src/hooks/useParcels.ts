@@ -408,17 +408,21 @@ export function useMarkAllDelivered() {
 
   return useMutation({
     mutationFn: async (parcelIds: string[]) => {
-      const { error } = await supabase
-        .from('parcels')
-        .update({
-          status: 'delivered',
-          client_satisfied: true,
-          cash_collected: false,
-          delivered_at: new Date().toISOString(),
-        })
-        .in('id', parcelIds)
-
-      if (error) throw error
+      const now = new Date().toISOString()
+      const updates = parcelIds.map((id) =>
+        supabase
+          .from('parcels')
+          .update({
+            status: 'delivered',
+            client_satisfied: true,
+            cash_collected: false,
+            delivered_at: now,
+          })
+          .eq('id', id)
+      )
+      const results = await Promise.all(updates)
+      const failed = results.find((r) => r.error)
+      if (failed?.error) throw failed.error
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['parcels'] })

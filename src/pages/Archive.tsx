@@ -113,7 +113,7 @@ export default function Archive() {
           className="px-4 py-2 rounded-full border border-card-border bg-white text-sm font-medium text-slate-600 focus:outline-none focus:ring-1 focus:ring-pill-green-border shrink-0"
         >
           <option value="all">Toți șoferii</option>
-          {drivers?.map((driver) => (
+          {drivers?.filter(d => d.role === 'driver').map((driver) => (
             <option key={driver.id} value={driver.id}>
               {driver.username}
             </option>

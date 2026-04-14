@@ -300,7 +300,7 @@ export default function AdminDashboard() {
           className="px-4 py-2 rounded-full border border-card-border bg-white text-sm font-medium text-slate-600 focus:outline-none focus:ring-1 focus:ring-pill-green-border shrink-0"
         >
           <option value="all">Toți șoferii</option>
-          {drivers?.map((driver) => {
+          {drivers?.filter(d => d.role === 'driver').map((driver) => {
             const count =
               parcels?.filter((p) => p.driver_id === driver.id).length || 0
             return (
@@ -586,7 +586,7 @@ export default function AdminDashboard() {
               Selectează șoferul căruia i le atribui:
             </p>
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {drivers?.map((driver) => (
+              {drivers?.filter(d => d.role === 'driver').map((driver) => (
                 <button
                   key={driver.id}
                   onClick={() => handleTransfer(driver.id)}

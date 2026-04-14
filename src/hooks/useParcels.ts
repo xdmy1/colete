@@ -61,7 +61,7 @@ export function useAllParcels(excludedDestinations?: string[] | null) {
   })
 }
 
-// ADMIN: lista tuturor soferilor
+// ADMIN: lista tuturor profilelor (soferi + admini) — folosit si pentru lookup de nume
 export function useAllDrivers() {
   return useQuery({
     queryKey: ['drivers'],
@@ -69,7 +69,6 @@ export function useAllDrivers() {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('role', 'driver')
         .order('username', { ascending: true })
 
       if (error) throw error

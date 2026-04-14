@@ -17,7 +17,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useAuth } from '../hooks/useAuth'
-import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel } from '../hooks/useParcels'
+import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel, useMarkAllDelivered } from '../hooks/useParcels'
 import { formatPrice, getDestLabel, ROUTES } from '../lib/utils'
 import { exportParcelsToExcel, exportCashReportToExcel } from '../lib/exportExcel'
 import type { Parcel } from '../lib/types'
@@ -63,9 +63,11 @@ export default function AdminDashboard() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showTransferPicker, setShowTransferPicker] = useState(false)
   const transfer = useTransferParcels()
+  const markAllDelivered = useMarkAllDelivered()
   const updateParcel = useUpdateParcel()
   const deleteParcel = useDeleteParcel()
   const [editMode, setEditMode] = useState(false)
+  const [showBulkDeliverConfirm, setShowBulkDeliverConfirm] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [showCashReport, setShowCashReport] = useState(false)
 
@@ -515,12 +517,18 @@ export default function AdminDashboard() {
 
       {/* Bottom bar: select mode action OR FAB */}
       {selectMode && selectedIds.size > 0 ? (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-card-border px-4 py-4 z-20 safe-area-bottom">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-card-border px-4 py-4 z-20 safe-area-bottom space-y-2">
           <button
             onClick={() => setShowTransferPicker(true)}
             className="w-full py-3.5 bg-pill-green-bg text-emerald-800 text-base font-bold rounded-full border border-pill-green-border hover:bg-emerald-100 active:bg-emerald-200 transition-colors"
           >
             Atribuie {selectedIds.size} colete unui șofer
+          </button>
+          <button
+            onClick={() => setShowBulkDeliverConfirm(true)}
+            className="w-full py-3 bg-amber-50 text-amber-800 text-base font-bold rounded-full border border-amber-300 hover:bg-amber-100 active:bg-amber-200 transition-colors"
+          >
+            Marchează {selectedIds.size} ca livrate
           </button>
         </div>
       ) : !selectMode && (
@@ -532,6 +540,39 @@ export default function AdminDashboard() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
         </button>
+      )}
+
+      {/* Bulk Deliver Confirm Modal */}
+      {showBulkDeliverConfirm && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-3xl border border-card-border p-6 space-y-5">
+            <h3 className="text-xl font-bold text-slate-800 text-center">
+              Marchezi ca livrate?
+            </h3>
+            <p className="text-center text-slate-500 text-sm">
+              {selectedIds.size} colete vor fi marcate ca livrate.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowBulkDeliverConfirm(false)}
+                className="flex-1 py-3.5 rounded-full border border-card-border text-slate-500 font-semibold hover:bg-gray-50 text-base transition-colors"
+              >
+                Anulează
+              </button>
+              <button
+                onClick={async () => {
+                  await markAllDelivered.mutateAsync(Array.from(selectedIds))
+                  setShowBulkDeliverConfirm(false)
+                  exitSelectMode()
+                }}
+                disabled={markAllDelivered.isPending}
+                className="flex-1 py-3.5 rounded-full bg-amber-50 text-amber-800 font-bold border border-amber-300 hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed text-base transition-colors"
+              >
+                {markAllDelivered.isPending ? 'Se salvează...' : 'Confirmă'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Transfer Driver Picker Modal */}

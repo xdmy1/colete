@@ -402,6 +402,30 @@ export function useMarkDelivered(_driverId: string) {
   })
 }
 
+// Marcheaza TOATE coletele (lista de ID-uri) ca livrate dintr-o data
+export function useMarkAllDelivered() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (parcelIds: string[]) => {
+      const { error } = await supabase
+        .from('parcels')
+        .update({
+          status: 'delivered',
+          client_satisfied: true,
+          cash_collected: false,
+          delivered_at: new Date().toISOString(),
+        })
+        .in('id', parcelIds)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['parcels'] })
+    },
+  })
+}
+
 // Raport dare de seamă: toate coletele livrate cu cash_collected în săptămâna curentă
 export function useDriverCashReport(driverId: string | undefined) {
   return useQuery({

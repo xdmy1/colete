@@ -374,13 +374,16 @@ export function useMarkDelivered(_driverId: string) {
       deliveryNote,
       cashCollected,
       mdlAmount,
+      weekId,
     }: {
       parcelId: string
       clientSatisfied: boolean
       deliveryNote?: string
       cashCollected?: boolean
       mdlAmount?: number | null
+      weekId?: string
     }) => {
+      const shouldArchive = weekId ? weekId < getCurrentWeekId() : false
       const { error } = await supabase
         .from('parcels')
         .update({
@@ -390,6 +393,7 @@ export function useMarkDelivered(_driverId: string) {
           cash_collected: cashCollected ?? false,
           paid_mdl_amount: mdlAmount ?? null,
           delivered_at: new Date().toISOString(),
+          ...(shouldArchive && { is_archived: true }),
         })
         .eq('id', parcelId)
 
@@ -397,6 +401,7 @@ export function useMarkDelivered(_driverId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['parcels'] })
+      queryClient.invalidateQueries({ queryKey: ['cash-report'] })
     },
   })
 }
@@ -408,23 +413,38 @@ export function useMarkAllDelivered() {
   return useMutation({
     mutationFn: async (parcelIds: string[]) => {
       const now = new Date().toISOString()
-      const updates = parcelIds.map((id) =>
-        supabase
+      const currentWeekId = getCurrentWeekId()
+
+      // Fetch payment_status si week_id pentru fiecare colet
+      const { data: parcelsData, error: fetchErr } = await supabase
+        .from('parcels')
+        .select('id, payment_status, week_id')
+        .in('id', parcelIds)
+
+      if (fetchErr) throw fetchErr
+
+      const updates = (parcelsData || []).map((p) => {
+        const cashCollected = p.payment_status === 'cod' || p.payment_status === 'paid'
+        const shouldArchive = p.week_id < currentWeekId
+        return supabase
           .from('parcels')
           .update({
             status: 'delivered',
             client_satisfied: true,
-            cash_collected: false,
+            cash_collected: cashCollected,
             delivered_at: now,
+            ...(shouldArchive && { is_archived: true }),
           })
-          .eq('id', id)
-      )
+          .eq('id', p.id)
+      })
+
       const results = await Promise.all(updates)
       const failed = results.find((r) => r.error)
       if (failed?.error) throw failed.error
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['parcels'] })
+      queryClient.invalidateQueries({ queryKey: ['cash-report'] })
     },
   })
 }

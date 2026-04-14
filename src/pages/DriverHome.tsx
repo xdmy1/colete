@@ -101,6 +101,7 @@ export default function DriverHome() {
       deliveryNote: feedbackNote || undefined,
       cashCollected,
       mdlAmount: cashCollected && parsedMdl && parsedMdl > 0 ? parsedMdl : null,
+      weekId: selectedParcel.week_id,
     })
 
     setSelectedParcel(null)

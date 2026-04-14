@@ -86,7 +86,7 @@ export default function AddParcel() {
           <p className="text-slate-400 mb-4">
             Selectează șoferul căruia îi atribui coletul:
           </p>
-          {drivers?.filter(d => d.role === 'driver').map((driver) => (
+          {drivers?.map((driver) => (
             <Button
               key={driver.id}
               variant="destination"

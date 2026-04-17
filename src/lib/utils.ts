@@ -10,6 +10,14 @@ export const DESTINATIONS = [
   { code: 'DE' as DestinationCode, label: 'Germania', shortLabel: 'D' },
 ]
 
+export const PHONE_PREFIX: Record<DestinationCode, string> = {
+  MD: '+373 ',
+  UK: '+44 ',
+  BE: '+32 ',
+  NL: '+31 ',
+  DE: '+49 ',
+}
+
 // Toate rutele posibile — butoane directe, fara ambiguitate
 export const ROUTES: { origin: DestinationCode; destination: DestinationCode; label: string }[] = [
   { origin: 'MD', destination: 'UK', label: 'Moldova → Anglia' },

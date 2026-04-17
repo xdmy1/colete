@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { ContactDetails } from '../../lib/types'
 import type { DestinationCode } from '../../lib/utils'
-import { calculatePrice, getCurrency, formatPrice } from '../../lib/utils'
+import { calculatePrice, getCurrency, formatPrice, PHONE_PREFIX } from '../../lib/utils'
 import { useContacts } from '../../hooks/useContacts'
 import Button from '../ui/Button'
 
@@ -32,12 +32,15 @@ interface StepDetailsProps {
   }
 }
 
-const PHONE_PREFIX: Record<DestinationCode, string> = {
-  MD: '+373 ',
-  UK: '+44 ',
-  BE: '+32 ',
-  NL: '+31 ',
-  DE: '+49 ',
+function stripLeadingZero(value: string, prefix: string): string {
+  if (value.startsWith(prefix) && value[prefix.length] === '0') {
+    return prefix + value.slice(prefix.length + 1)
+  }
+  return value
+}
+
+function capitalizeWords(value: string): string {
+  return value.replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 
@@ -222,17 +225,20 @@ export default function StepDetails({
           placeholder="Nume destinatar *"
           value={receiver.name}
           contacts={contacts}
-          onChange={(val) => setReceiver({ ...receiver, name: val })}
-          onSelect={(c) => setReceiver({ name: c.name, phone: c.phone, address: c.address })}
+          onChange={(val) => setReceiver({ ...receiver, name: capitalizeWords(val) })}
+          onSelect={(c) => setReceiver({ name: capitalizeWords(c.name), phone: c.phone, address: c.address })}
           inputCls={inputCls}
         />
-        <input
-          type="tel"
-          placeholder="Telefon destinatar *"
-          value={receiver.phone}
-          onChange={(e) => setReceiver({ ...receiver, phone: e.target.value })}
-          className={inputCls}
-        />
+        <div className="relative">
+          <input
+            type="tel"
+            placeholder="Telefon destinatar *"
+            value={receiver.phone}
+            onChange={(e) => setReceiver({ ...receiver, phone: stripLeadingZero(e.target.value, PHONE_PREFIX[deliveryDestination]) })}
+            className={inputCls}
+          />
+          <p className="text-[11px] text-slate-400 mt-0.5 ml-1">fără 0 la început</p>
+        </div>
         <input
           type="text"
           placeholder="Adresa destinatar *"
@@ -251,17 +257,20 @@ export default function StepDetails({
           placeholder="Nume expeditor *"
           value={sender.name}
           contacts={contacts}
-          onChange={(val) => setSender({ ...sender, name: val })}
-          onSelect={(c) => setSender({ name: c.name, phone: c.phone, address: c.address })}
+          onChange={(val) => setSender({ ...sender, name: capitalizeWords(val) })}
+          onSelect={(c) => setSender({ name: capitalizeWords(c.name), phone: c.phone, address: c.address })}
           inputCls={inputCls}
         />
-        <input
-          type="tel"
-          placeholder="Telefon expeditor *"
-          value={sender.phone}
-          onChange={(e) => setSender({ ...sender, phone: e.target.value })}
-          className={inputCls}
-        />
+        <div className="relative">
+          <input
+            type="tel"
+            placeholder="Telefon expeditor *"
+            value={sender.phone}
+            onChange={(e) => setSender({ ...sender, phone: stripLeadingZero(e.target.value, PHONE_PREFIX[originCode]) })}
+            className={inputCls}
+          />
+          <p className="text-[11px] text-slate-400 mt-0.5 ml-1">fără 0 la început</p>
+        </div>
         <div className="flex gap-2">
           <input
             type="text"

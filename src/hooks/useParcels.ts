@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Parcel, NewParcelData, Profile } from '../lib/types'
+import type { Parcel, NewParcelData, NewCollectionData, Profile } from '../lib/types'
 import { getParcelAllPhotoPaths, batchPrefetchSignedUrls } from './usePhotoUrl'
 import {
   calculatePrice,
@@ -201,6 +201,49 @@ export function useAddParcel(driverId: string) {
   })
 }
 
+// Adauga colectare noua
+export function useAddCollection(driverId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (data: NewCollectionData) => {
+      const parcelId = crypto.randomUUID()
+      const weekId = getCurrentWeekId()
+
+      const insertData = {
+        id: parcelId,
+        human_id: 'C',
+        numeric_id: 0,
+        driver_id: driverId,
+        week_id: weekId,
+        record_type: 'collection',
+        origin_code: data.country_code,
+        delivery_destination: 'MD',
+        sender_details: { name: '', phone: data.phone, address: data.address },
+        receiver_details: { name: '', phone: '', address: '' },
+        content_description: data.notes || null,
+        nr_bucati: 1,
+        payment_status: 'cod',
+        weight: 0,
+        price: 0,
+        currency: 'EUR',
+        photo_url: null,
+        photo_urls: [],
+        labels: [],
+      }
+
+      const { error } = await supabase
+        .from('parcels')
+        .insert(insertData)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['parcels'] })
+    },
+  })
+}
+
 // Reorder parcels (drag & drop) — update route_order with optimistic UI
 export function useReorderParcels(_driverId: string) {
   const queryClient = useQueryClient()
@@ -265,15 +308,19 @@ export function useTransferParcels() {
       // Get current parcels to preserve existing labels
       const { data: currentParcels, error: fetchErr } = await supabase
         .from('parcels')
-        .select('id, labels')
+        .select('id, labels, record_type')
         .in('id', parcelIds)
 
       if (fetchErr) throw fetchErr
 
       const updates = (currentParcels || []).map((p) => {
-        const newLabels = p.labels?.includes('L')
-          ? p.labels
-          : [...(p.labels || []), 'L']
+        // Collections don't get the 'L' label — only parcels do
+        const isCollection = p.record_type === 'collection'
+        const newLabels = isCollection
+          ? (p.labels || [])
+          : p.labels?.includes('L')
+            ? p.labels
+            : [...(p.labels || []), 'L']
         return supabase
           .from('parcels')
           .update({ driver_id: targetDriverId, labels: newLabels })
@@ -429,16 +476,17 @@ export function useMarkAllDelivered() {
       const now = new Date().toISOString()
       const currentWeekId = getCurrentWeekId()
 
-      // Fetch payment_status si week_id pentru fiecare colet
+      // Fetch payment_status, week_id si record_type pentru fiecare colet
       const { data: parcelsData, error: fetchErr } = await supabase
         .from('parcels')
-        .select('id, payment_status, week_id')
+        .select('id, payment_status, week_id, record_type')
         .in('id', parcelIds)
 
       if (fetchErr) throw fetchErr
 
       const updates = (parcelsData || []).map((p) => {
-        const cashCollected = p.payment_status === 'cod' || p.payment_status === 'paid'
+        const isCollection = p.record_type === 'collection'
+        const cashCollected = isCollection ? false : (p.payment_status === 'cod' || p.payment_status === 'paid')
         const shouldArchive = p.week_id < currentWeekId
         return supabase
           .from('parcels')

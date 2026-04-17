@@ -7,7 +7,7 @@ import {
   useMarkDelivered,
   useUpdateParcel,
 } from '../hooks/useParcels'
-import { formatPrice, getDestLabel } from '../lib/utils'
+import { formatPrice, getDestLabel, calculatePrice } from '../lib/utils'
 import { exportCashReportToExcel } from '../lib/exportExcel'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
@@ -43,9 +43,11 @@ export default function DriverHome() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'delivered'>('all')
   const [search, setSearch] = useState('')
   const [showCashReport, setShowCashReport] = useState(false)
+  const [collectionsMode, setCollectionsMode] = useState(false)
+  const hasCollections = (profile?.allowed_collection_countries?.length ?? 0) > 0
 
-  const allActive = parcels?.filter((p) => p.status === 'pending') || []
-  const allDelivered = parcels?.filter((p) => p.status === 'delivered') || []
+  const allActive = parcels?.filter((p) => p.status === 'pending' && (collectionsMode ? p.record_type === 'collection' : p.record_type !== 'collection')) || []
+  const allDelivered = parcels?.filter((p) => p.status === 'delivered' && (collectionsMode ? p.record_type === 'collection' : p.record_type !== 'collection')) || []
 
   // Dare de seamă: toate coletele cu cash primit (COD livrat + achitat cash de expeditor)
   // Folosim hook separat ca să includă și coletele arhivate (livrate în aceeași săptămână)
@@ -77,7 +79,9 @@ export default function DriverHome() {
         p.receiver_details.name.toLowerCase().includes(q) ||
         p.sender_details.name.toLowerCase().includes(q) ||
         p.receiver_details.phone.includes(q) ||
-        p.receiver_details.address.toLowerCase().includes(q)
+        p.sender_details.phone.includes(q) ||
+        p.receiver_details.address.toLowerCase().includes(q) ||
+        p.sender_details.address.toLowerCase().includes(q)
       )
     }
     return result
@@ -87,6 +91,18 @@ export default function DriverHome() {
   const deliveredParcels = applyFilters(allDelivered, true)
 
   function handleMarkDelivered() {
+    // Collections skip the feedback modal - mark directly as collected
+    if (selectedParcel?.record_type === 'collection') {
+      markDelivered.mutateAsync({
+        parcelId: selectedParcel.id,
+        clientSatisfied: true,
+        cashCollected: false,
+        weekId: selectedParcel.week_id,
+      }).then(() => {
+        setSelectedParcel(null)
+      })
+      return
+    }
     setShowFeedback(true)
   }
 
@@ -121,7 +137,7 @@ export default function DriverHome() {
             onClick={() => setShowCashReport(true)}
             className="px-3 py-1.5 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 transition-colors"
           >
-            Dare de seamă
+            $
           </button>
           <button
             onClick={logout}
@@ -149,7 +165,7 @@ export default function DriverHome() {
               }`}
             >
               <p className={`text-2xl font-extrabold ${statusFilter === 'pending' ? 'text-white' : 'text-amber-700'}`}>{allActive.length}</p>
-              <p className={`text-xs font-semibold uppercase tracking-wide ${statusFilter === 'pending' ? 'text-white/80' : 'text-amber-600/70'}`}>De livrat</p>
+              <p className={`text-xs font-semibold uppercase tracking-wide ${statusFilter === 'pending' ? 'text-white/80' : 'text-amber-600/70'}`}>{collectionsMode ? 'De colectat' : 'De livrat'}</p>
             </button>
             <button
               onClick={() => setStatusFilter(statusFilter === 'delivered' ? 'all' : 'delivered')}
@@ -160,7 +176,7 @@ export default function DriverHome() {
               }`}
             >
               <p className={`text-2xl font-extrabold ${statusFilter === 'delivered' ? 'text-white' : 'text-emerald-700'}`}>{allDelivered.length}</p>
-              <p className={`text-xs font-semibold uppercase tracking-wide ${statusFilter === 'delivered' ? 'text-white/80' : 'text-emerald-600/70'}`}>Livrate</p>
+              <p className={`text-xs font-semibold uppercase tracking-wide ${statusFilter === 'delivered' ? 'text-white/80' : 'text-emerald-600/70'}`}>{collectionsMode ? 'Colectate' : 'Livrate'}</p>
             </button>
           </div>
 
@@ -245,6 +261,16 @@ export default function DriverHome() {
                 </button>
               )
             })}
+            <button
+              onClick={() => setCollectionsMode((v) => !v)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                collectionsMode
+                  ? 'bg-purple-50 border-purple-400 text-purple-700'
+                  : 'bg-white border-card-border text-slate-400 hover:border-purple-300'
+              }`}
+            >
+              Colectare
+            </button>
           </div>
 
           {/* Active parcels */}
@@ -279,7 +305,7 @@ export default function DriverHome() {
             <section>
               {statusFilter === 'all' && (
                 <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
-                  Livrate ({deliveredParcels.length})
+                  {collectionsMode ? 'Colectate' : 'Livrate'} ({deliveredParcels.length})
                 </h2>
               )}
               <div className="space-y-3">
@@ -301,13 +327,21 @@ export default function DriverHome() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
               </div>
-              <p className="text-slate-400 font-medium">Niciun colet livrat</p>
+              <p className="text-slate-400 font-medium">{collectionsMode ? 'Nicio colectare' : 'Niciun colet livrat'}</p>
             </div>
           )}
         </>
       )}
 
-      {/* FAB - Add parcel button */}
+      {/* FAB buttons */}
+      {hasCollections && (
+        <button
+          onClick={() => navigate('/add-collection')}
+          className="fixed bottom-6 left-6 w-14 h-14 bg-purple-50 text-purple-600 rounded-full border border-purple-300 hover:bg-purple-100 active:scale-95 transition-all flex items-center justify-center z-20 shadow-sm text-xl font-extrabold"
+        >
+          C
+        </button>
+      )}
       <button
         onClick={() => navigate('/add')}
         className="fixed bottom-6 right-6 w-14 h-14 bg-white text-emerald-600 rounded-full border border-card-border hover:bg-pill-green-bg hover:border-pill-green-border active:scale-95 transition-all flex items-center justify-center z-20 shadow-sm"
@@ -524,21 +558,28 @@ function ParcelCard({
   onClick: () => void
 }) {
   const isDelivered = parcel.status === 'delivered'
+  const isCollection = parcel.record_type === 'collection'
+  const navAddress = isCollection ? parcel.sender_details.address : parcel.receiver_details.address
+  const callPhone = isCollection ? parcel.sender_details.phone : parcel.receiver_details.phone
   return (
     <div
       className={`rounded-2xl overflow-hidden transition-all ${
-        isDelivered
-          ? 'bg-pill-green-bg/50 border border-pill-green-border/60'
-          : 'bg-white border border-card-border'
+        isCollection
+          ? 'bg-purple-50/40 border border-purple-200'
+          : isDelivered
+            ? 'bg-pill-green-bg/50 border border-pill-green-border/60'
+            : 'bg-white border border-card-border'
       }`}
     >
       <div className="flex items-stretch">
         {/* Type indicator strip */}
         <div
           className={`w-1 shrink-0 ${
-            isDelivered
-              ? 'bg-emerald-400'
-              : 'bg-amber-400'
+            isCollection
+              ? 'bg-purple-400'
+              : isDelivered
+                ? 'bg-emerald-400'
+                : 'bg-amber-400'
           }`}
         />
 
@@ -547,67 +588,100 @@ function ParcelCard({
           onClick={onClick}
           className="flex-1 text-left px-4 py-3.5 min-w-0"
         >
-          {/* Row 1: ID + Route + Label */}
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-lg font-extrabold text-slate-800">
-              {parcel.human_id}
-            </span>
-            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-gray-50 text-slate-500 font-medium border border-card-border">
-              {getDestLabel(parcel.origin_code)} → {getDestLabel(parcel.delivery_destination)}
-            </span>
-            {parcel.labels.filter(l => l !== 'COLET' && l !== 'LIVRARE').length > 0 && (
-              <span className="px-2.5 py-0.5 rounded-full bg-violet-50 text-violet-600 text-[11px] font-bold border border-violet-200">
-                {parcel.labels.filter(l => l !== 'COLET' && l !== 'LIVRARE').join(', ')}
-              </span>
-            )}
-          </div>
+          {isCollection ? (
+            <>
+              {/* Collection card */}
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold border border-purple-300">
+                  Colectare
+                </span>
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-gray-50 text-slate-500 font-medium border border-card-border">
+                  {getDestLabel(parcel.origin_code)}
+                </span>
+              </div>
+              <p className="text-base font-bold text-slate-700 truncate">
+                {parcel.sender_details.phone}
+              </p>
+              <p className="text-sm text-slate-400 truncate mt-0.5">
+                {parcel.sender_details.address}
+              </p>
+              {parcel.content_description && (
+                <p className="text-xs text-slate-500 mt-1.5 truncate">
+                  {parcel.content_description}
+                </p>
+              )}
+              <p className="text-[10px] text-slate-400 mt-1">
+                {new Date(parcel.created_at).toLocaleDateString('ro-RO', { day: '2-digit', month: 'short' })}
+              </p>
+            </>
+          ) : (
+            <>
+              {/* Row 1: ID + Route + Label */}
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-lg font-extrabold text-slate-800">
+                  {parcel.human_id}
+                </span>
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-gray-50 text-slate-500 font-medium border border-card-border">
+                  {getDestLabel(parcel.origin_code)} → {getDestLabel(parcel.delivery_destination)}
+                </span>
+                {parcel.labels.filter(l => l !== 'COLET' && l !== 'LIVRARE').length > 0 && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-violet-50 text-violet-600 text-[11px] font-bold border border-violet-200">
+                    {parcel.labels.filter(l => l !== 'COLET' && l !== 'LIVRARE').join(', ')}
+                  </span>
+                )}
+              </div>
 
-          {/* Row 2: Receiver name */}
-          <p className="text-base font-bold text-slate-700 truncate">
-            {parcel.receiver_details.name}
-          </p>
+              {/* Row 2: Receiver name */}
+              <p className="text-base font-bold text-slate-700 truncate">
+                {parcel.receiver_details.name}
+              </p>
 
-          {/* Row 3: Address */}
-          <p className="text-sm text-slate-400 truncate mt-0.5">
-            {parcel.receiver_details.address}
-          </p>
+              {/* Row 3: Address */}
+              <p className="text-sm text-slate-400 truncate mt-0.5">
+                {parcel.receiver_details.address}
+              </p>
 
-          {/* Row 4: Weight + Price + Payment */}
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs font-medium text-slate-400">
-              {parcel.weight} kg
-            </span>
-            <span className="text-sm font-bold text-emerald-700">
-              {formatPrice(parcel.price, parcel.currency)}
-            </span>
-            {(parcel.payment_status === 'paid' || parcel.cash_collected) ? (
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-300">
-                Achitat
-              </span>
-            ) : parcel.payment_status === 'cod' ? (
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-bold border border-red-300">
-                La livrare
-              </span>
-            ) : parcel.payment_status === 'transfer' ? (
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-bold border border-blue-300">
-                Transfer
-              </span>
-            ) : null}
-          </div>
+              {/* Row 4: Weight + Price + Payment */}
+              <div className="flex items-center gap-3 mt-2">
+                <span className="text-xs font-medium text-slate-400">
+                  {parcel.weight} kg
+                </span>
+                <span className="text-sm font-bold text-emerald-700">
+                  {formatPrice(parcel.price, parcel.currency)}
+                </span>
+                {(parcel.payment_status === 'paid' || parcel.cash_collected) ? (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-300">
+                    Achitat
+                  </span>
+                ) : parcel.payment_status === 'cod' ? (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-bold border border-red-300">
+                    La livrare
+                  </span>
+                ) : parcel.payment_status === 'transfer' ? (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-bold border border-blue-300">
+                    Transfer
+                  </span>
+                ) : null}
+                <span className="text-[10px] text-slate-400 ml-auto">
+                  {new Date(parcel.created_at).toLocaleDateString('ro-RO', { day: '2-digit', month: 'short' })}
+                </span>
+              </div>
+            </>
+          )}
         </button>
 
-        {/* Waze navigation button */}
+        {/* Navigation button */}
         <button
           onClick={(e) => {
             e.stopPropagation()
-            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(parcel.receiver_details.address)}`, '_blank')
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(navAddress)}`, '_blank')
           }}
           className={`flex items-center justify-center w-12 transition-colors border-l ${
             isDelivered
               ? 'border-pill-green-border/60 bg-blue-50/60 text-blue-400 hover:bg-blue-50 active:bg-blue-100'
               : 'border-card-border bg-blue-50/40 text-blue-400 hover:bg-blue-50 active:bg-blue-100'
           }`}
-          aria-label={`Navigare la ${parcel.receiver_details.address}`}
+          aria-label={`Navigare la ${navAddress}`}
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
@@ -616,14 +690,14 @@ function ParcelCard({
 
         {/* Phone call button */}
         <a
-          href={`tel:${parcel.receiver_details.phone}`}
+          href={`tel:${callPhone}`}
           onClick={(e) => e.stopPropagation()}
           className={`flex items-center justify-center w-12 transition-colors border-l ${
             isDelivered
               ? 'border-pill-green-border/60 bg-pill-green-bg/60 text-emerald-500 hover:bg-pill-green-bg active:bg-emerald-100'
               : 'border-card-border bg-pill-green-bg/40 text-emerald-500 hover:bg-pill-green-bg active:bg-emerald-100'
           }`}
-          aria-label={`Sună ${parcel.receiver_details.phone}`}
+          aria-label={`Suna ${callPhone}`}
         >
           <PhoneIcon className="w-5 h-5" />
         </a>
@@ -718,6 +792,11 @@ function ParcelDetailModal({
           </button>
         </div>
 
+        {/* Date added */}
+        <p className="px-5 pt-2 text-xs text-slate-400">
+          Adăugat: {new Date(parcel.created_at).toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' })}
+        </p>
+
         {/* Photo */}
         <ParcelPhoto photoPaths={parcel.photo_urls?.length ? parcel.photo_urls : parcel.photo_url ? [parcel.photo_url] : []} className="w-full max-h-72 object-cover" />
 
@@ -744,7 +823,11 @@ function ParcelDetailModal({
                 </div>
                 <div className="flex-1">
                   <label className="text-xs text-slate-400 mb-1 block font-medium">Greutate (kg)</label>
-                  <input type="number" step="0.1" min="0" className={inputCls} value={weight} onChange={(e) => setWeight(Number(e.target.value))} />
+                  <input type="number" step="0.1" min="0" className={inputCls} value={weight} onChange={(e) => {
+                    const w = Number(e.target.value)
+                    setWeight(w)
+                    setManualPrice(calculatePrice(w, parcel.origin_code, parcel.delivery_destination))
+                  }} />
                 </div>
               </div>
               <div>
@@ -799,13 +882,24 @@ function ParcelDetailModal({
                 <p className="text-sm text-slate-500 mb-3">
                   {parcel.receiver_details.address}
                 </p>
-                <a
-                  href={`tel:${parcel.receiver_details.phone}`}
-                  className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-pill-green-bg text-emerald-700 font-bold text-base border border-pill-green-border active:bg-emerald-100 transition-colors"
-                >
-                  <PhoneIcon className="w-5 h-5" />
-                  {parcel.receiver_details.phone}
-                </a>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <a
+                    href={`tel:${parcel.receiver_details.phone}`}
+                    className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-pill-green-bg text-emerald-700 font-bold text-base border border-pill-green-border active:bg-emerald-100 transition-colors"
+                  >
+                    <PhoneIcon className="w-5 h-5" />
+                    {parcel.receiver_details.phone}
+                  </a>
+                  <a
+                    href={`https://wa.me/${parcel.receiver_details.phone.replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-green-50 text-green-600 text-sm font-bold border border-green-300 hover:bg-green-100 active:bg-green-200 transition-colors"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    WhatsApp
+                  </a>
+                </div>
               </div>
 
               {/* Expeditor */}
@@ -816,13 +910,24 @@ function ParcelDetailModal({
                 <p className="text-lg font-bold text-slate-800 mb-1">
                   {parcel.sender_details.name}
                 </p>
-                <a
-                  href={`tel:${parcel.sender_details.phone}`}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-semibold text-sm border border-blue-200 active:bg-blue-100 transition-colors"
-                >
-                  <PhoneIcon className="w-4 h-4" />
-                  {parcel.sender_details.phone}
-                </a>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <a
+                    href={`tel:${parcel.sender_details.phone}`}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-semibold text-sm border border-blue-200 active:bg-blue-100 transition-colors"
+                  >
+                    <PhoneIcon className="w-4 h-4" />
+                    {parcel.sender_details.phone}
+                  </a>
+                  <a
+                    href={`https://wa.me/${parcel.sender_details.phone.replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-green-50 text-green-600 text-sm font-bold border border-green-300 hover:bg-green-100 active:bg-green-200 transition-colors"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    WhatsApp
+                  </a>
+                </div>
               </div>
 
               {/* Details grid */}
@@ -867,6 +972,11 @@ function ParcelDetailModal({
                         ? 'La livrare — achitat ✓'
                         : 'La livrare (neachitat)'}
                 </p>
+                {parcel.paid_mdl_amount != null && parcel.paid_mdl_amount > 0 && (
+                  <p className="text-xs font-semibold text-slate-600 mt-1">
+                    Achitat: {parcel.paid_mdl_amount.toFixed(0)} MDL
+                  </p>
+                )}
               </div>
 
               {parcel.content_description && (
@@ -924,14 +1034,14 @@ function ParcelDetailModal({
                     onClick={onMarkDelivered}
                     className="flex-1 py-4 bg-pill-green-bg text-emerald-800 text-lg font-bold rounded-full border border-pill-green-border hover:bg-emerald-100 active:bg-emerald-200 transition-colors"
                   >
-                    Marchează ca Livrat
+                    {parcel.record_type === 'collection' ? 'Marchează ca Colectat' : 'Marchează ca Livrat'}
                   </button>
                 )}
               </div>
 
               {parcel.status === 'delivered' && (
                 <div className="text-center py-3 text-emerald-700 font-bold text-base bg-pill-green-bg/50 rounded-full border border-pill-green-border">
-                  Livrat
+                  {parcel.record_type === 'collection' ? 'Colectat' : 'Livrat'}
                   {parcel.delivered_at &&
                     ` — ${new Date(parcel.delivered_at).toLocaleDateString('ro-RO')}`}
                 </div>

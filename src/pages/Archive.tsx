@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useArchivedParcels, useAllDrivers } from '../hooks/useParcels'
 import { useAuth } from '../hooks/useAuth'
-import { formatPrice, getDestLabel, weekIdParts } from '../lib/utils'
+import { formatPrice, getDestLabel, weekIdParts, ROUTES } from '../lib/utils'
 import { exportParcelsToExcel } from '../lib/exportExcel'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
@@ -16,6 +16,7 @@ export default function Archive() {
 
   const [driverFilter, setDriverFilter] = useState<string | 'all'>('all')
   const [weekFilter, setWeekFilter] = useState<string | 'all'>('all')
+  const [routeFilter, setRouteFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null)
   const [isExporting, setIsExporting] = useState(false)
@@ -34,6 +35,10 @@ export default function Archive() {
     if (weekFilter !== 'all') {
       result = result.filter((p) => p.week_id === weekFilter)
     }
+    if (routeFilter !== 'all') {
+      const [origin, dest] = routeFilter.split('-')
+      result = result.filter((p) => p.origin_code === origin && p.delivery_destination === dest)
+    }
     if (search.trim()) {
       const q = search.toLowerCase().trim()
       result = result.filter((p) =>
@@ -45,7 +50,7 @@ export default function Archive() {
       )
     }
     return result
-  }, [parcels, driverFilter, weekFilter, search])
+  }, [parcels, driverFilter, weekFilter, routeFilter, search])
 
   function getDriverName(driverId: string) {
     return drivers?.find((d) => d.id === driverId)?.username || 'Necunoscut'
@@ -130,6 +135,19 @@ export default function Archive() {
             const { label, range } = weekIdParts(w)
             return <option key={w} value={w}>{label} ({range})</option>
           })}
+        </select>
+
+        <select
+          value={routeFilter}
+          onChange={(e) => setRouteFilter(e.target.value)}
+          className="px-4 py-2 rounded-full border border-card-border bg-white text-sm font-medium text-slate-600 focus:outline-none focus:ring-1 focus:ring-pill-green-border shrink-0"
+        >
+          <option value="all">Toate rutele</option>
+          {ROUTES.map((r) => (
+            <option key={`${r.origin}-${r.destination}`} value={`${r.origin}-${r.destination}`}>
+              {r.label}
+            </option>
+          ))}
         </select>
       </div>
 

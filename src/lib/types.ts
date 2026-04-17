@@ -6,6 +6,7 @@ export interface Profile {
   pin_code: string
   role: 'admin' | 'driver'
   excluded_destinations: string[] | null
+  allowed_collection_countries: string[] | null
   created_at: string
 }
 
@@ -54,6 +55,7 @@ export interface Parcel {
   delivery_note: string | null
   delivered_at: string | null
   created_at: string
+  record_type: 'parcel' | 'collection'
   updated_at: string
 }
 
@@ -70,4 +72,11 @@ export interface NewParcelData {
   manual_price?: number
   paid_mdl_amount?: number               // suma in lei daca au platit in MDL
   photos: File[]
+}
+
+export interface NewCollectionData {
+  country_code: DestinationCode
+  phone: string
+  address: string
+  notes: string
 }

@@ -4,6 +4,7 @@ import { useAuth } from './hooks/useAuth'
 import Login from './pages/Login'
 import DriverHome from './pages/DriverHome'
 import AddParcel from './pages/AddParcel'
+import AddCollection from './pages/AddCollection'
 import AdminDashboard from './pages/AdminDashboard'
 import Archive from './pages/Archive'
 
@@ -41,6 +42,7 @@ function AuthenticatedRoutes() {
         element={isAdmin ? <AdminDashboard /> : <DriverHome />}
       />
       <Route path="/add" element={<AddParcel />} />
+      <Route path="/add-collection" element={<AddCollection />} />
       <Route path="/archive" element={<Archive />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

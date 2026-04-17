@@ -1,22 +1,24 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
 
 export default function Login() {
   const { loginWithPin } = useAuth()
   const [pin, setPin] = useState('')
+  const pinRef = useRef('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (pin.length < 4) {
+    const currentPin = pinRef.current
+    if (currentPin.length < 4) {
       setError('Introdu minimum 4 cifre')
       return
     }
 
     setLoading(true)
     setError(null)
-    const { error: loginError } = await loginWithPin(pin)
+    const { error: loginError } = await loginWithPin(currentPin)
     if (loginError) {
       setError(loginError)
     }
@@ -24,13 +26,17 @@ export default function Login() {
   }
 
   function handleDigit(digit: string) {
-    if (pin.length < 6) {
-      setPin((prev) => prev + digit)
+    if (pinRef.current.length < 6) {
+      const next = pinRef.current + digit
+      pinRef.current = next
+      setPin(next)
     }
   }
 
   function handleDelete() {
-    setPin((prev) => prev.slice(0, -1))
+    const next = pinRef.current.slice(0, -1)
+    pinRef.current = next
+    setPin(next)
   }
 
   return (

@@ -250,15 +250,15 @@ export function useReorderParcels(_driverId: string) {
 
   return useMutation({
     mutationFn: async (orderedIds: string[]) => {
-      const updates = orderedIds.map((id, index) =>
-        supabase
+      for (let i = 0; i < orderedIds.length; i++) {
+        const { data, error } = await supabase
           .from('parcels')
-          .update({ route_order: index })
-          .eq('id', id)
-      )
-      const results = await Promise.all(updates)
-      const failed = results.find((r) => r.error)
-      if (failed?.error) throw failed.error
+          .update({ route_order: i })
+          .eq('id', orderedIds[i])
+          .select('id, route_order')
+        console.log(`[REORDER] id=${orderedIds[i].slice(0,8)} order=${i} → rows=${data?.length ?? 0}`, error || 'OK')
+        if (error) throw error
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['parcels'] })

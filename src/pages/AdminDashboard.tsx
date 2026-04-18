@@ -182,7 +182,7 @@ export default function AdminDashboard() {
       )
     }
 
-    return [...result].sort((a, b) => a.numeric_id - b.numeric_id)
+    return [...result].sort((a, b) => a.route_order - b.route_order || a.numeric_id - b.numeric_id)
   }, [parcels, driverFilter, routeFilter, statusFilter, paymentFilter, assignedOnly, collectionsMode, search])
 
   const activeParcels = filteredParcels.filter((p) => p.status === 'pending')

@@ -111,12 +111,13 @@ export default function AdminDashboard() {
   )
 
   function handleDragEnd(event: DragEndEvent) {
+    if (reorder.isPending) return
     const { active, over } = event
     if (!over || active.id === over.id) return
 
     const oldIndex = activeParcels.findIndex((p) => p.id === active.id)
     const newIndex = activeParcels.findIndex((p) => p.id === over.id)
-    if (oldIndex === -1 || newIndex === -1) return
+    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return
 
     const reordered = arrayMove(activeParcels, oldIndex, newIndex)
     reorder.mutate(reordered.map((p) => p.id))

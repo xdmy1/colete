@@ -264,8 +264,6 @@ export function useReorderParcels(_driverId: string) {
       queryClient.invalidateQueries({ queryKey: ['parcels'] })
     },
   })
-    },
-  })
 }
 
 // Transfer parcels to another driver (admin) — adds "L" label

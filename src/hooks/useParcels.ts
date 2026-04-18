@@ -250,25 +250,25 @@ export function useReorderParcels(_driverId: string) {
 
   return useMutation({
     mutationFn: async (orderedIds: string[]) => {
-      const updates = orderedIds.map((id, index) =>
-        supabase
-          .from('parcels')
-          .update({ route_order: index })
-          .eq('id', id)
-      )
-      const results = await Promise.all(updates)
-      const failed = results.find((r) => r.error)
-      if (failed?.error) throw failed.error
+      const orders = orderedIds.map((_, i) => i)
+      const { error } = await supabase.rpc('reorder_parcels', {
+        p_ids: orderedIds,
+        p_orders: orders,
+      })
+      if (error) throw error
     },
     onMutate: async (orderedIds) => {
       // Cancel outgoing refetches so they don't overwrite our optimistic update
       await queryClient.cancelQueries({ queryKey: ['parcels'] })
 
-      // Snapshot previous data
-      const previous = queryClient.getQueryData<Parcel[]>(['parcels', 'all'])
+      // Snapshot previous data — find the correct cache entry (key includes excludedDestinations)
+      const allQueries = queryClient.getQueriesData<Parcel[]>({ queryKey: ['parcels', 'all'] })
+      const cacheEntry = allQueries.find(([, data]) => data && data.length > 0)
+      const cacheKey = cacheEntry?.[0]
+      const previous = cacheEntry?.[1]
 
       // Optimistically update the cache
-      if (previous) {
+      if (previous && cacheKey) {
         const idToOrder = new Map(orderedIds.map((id, i) => [id, i]))
         const updated = previous.map((p) =>
           idToOrder.has(p.id)
@@ -276,15 +276,15 @@ export function useReorderParcels(_driverId: string) {
             : p
         )
         updated.sort((a, b) => a.route_order - b.route_order)
-        queryClient.setQueryData(['parcels', 'all'], updated)
+        queryClient.setQueryData(cacheKey, updated)
       }
 
-      return { previous }
+      return { previous, cacheKey }
     },
     onError: (_err, _ids, context) => {
       // Rollback on error
-      if (context?.previous) {
-        queryClient.setQueryData(['parcels', 'all'], context.previous)
+      if (context?.previous && context?.cacheKey) {
+        queryClient.setQueryData(context.cacheKey, context.previous)
       }
     },
     onSettled: () => {

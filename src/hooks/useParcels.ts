@@ -244,7 +244,7 @@ export function useAddCollection(driverId: string) {
   })
 }
 
-// Reorder parcels (drag & drop) — update route_order with optimistic UI
+// Reorder parcels (drag & drop) — update route_order
 export function useReorderParcels(_driverId: string) {
   const queryClient = useQueryClient()
 
@@ -258,44 +258,12 @@ export function useReorderParcels(_driverId: string) {
       )
       const results = await Promise.all(updates)
       const failed = results.find((r) => r.error)
-      if (failed?.error) {
-        console.error('[REORDER] failed:', failed.error)
-        throw failed.error
-      }
-      console.log('[REORDER] success, updated', orderedIds.length, 'parcels')
+      if (failed?.error) throw failed.error
     },
-    onMutate: async (orderedIds) => {
-      // Cancel outgoing refetches so they don't overwrite our optimistic update
-      await queryClient.cancelQueries({ queryKey: ['parcels'] })
-
-      // Snapshot previous data — find the correct cache entry (key includes excludedDestinations)
-      const allQueries = queryClient.getQueriesData<Parcel[]>({ queryKey: ['parcels', 'all'] })
-      const cacheEntry = allQueries.find(([, data]) => data && data.length > 0)
-      const cacheKey = cacheEntry?.[0]
-      const previous = cacheEntry?.[1]
-
-      // Optimistically update the cache
-      if (previous && cacheKey) {
-        const idToOrder = new Map(orderedIds.map((id, i) => [id, i]))
-        const updated = previous.map((p) =>
-          idToOrder.has(p.id)
-            ? { ...p, route_order: idToOrder.get(p.id)! }
-            : p
-        )
-        updated.sort((a, b) => a.route_order - b.route_order)
-        queryClient.setQueryData(cacheKey, updated)
-      }
-
-      return { previous, cacheKey }
-    },
-    onError: (_err, _ids, context) => {
-      // Rollback on error
-      if (context?.previous && context?.cacheKey) {
-        queryClient.setQueryData(context.cacheKey, context.previous)
-      }
-    },
-    onSettled: () => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['parcels'] })
+    },
+  })
     },
   })
 }

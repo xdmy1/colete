@@ -250,12 +250,19 @@ export function useReorderParcels(_driverId: string) {
 
   return useMutation({
     mutationFn: async (orderedIds: string[]) => {
-      const orders = orderedIds.map((_, i) => i)
-      const { error } = await supabase.rpc('reorder_parcels', {
-        p_ids: orderedIds,
-        p_orders: orders,
-      })
-      if (error) throw error
+      const updates = orderedIds.map((id, index) =>
+        supabase
+          .from('parcels')
+          .update({ route_order: index })
+          .eq('id', id)
+      )
+      const results = await Promise.all(updates)
+      const failed = results.find((r) => r.error)
+      if (failed?.error) {
+        console.error('[REORDER] failed:', failed.error)
+        throw failed.error
+      }
+      console.log('[REORDER] success, updated', orderedIds.length, 'parcels')
     },
     onMutate: async (orderedIds) => {
       // Cancel outgoing refetches so they don't overwrite our optimistic update

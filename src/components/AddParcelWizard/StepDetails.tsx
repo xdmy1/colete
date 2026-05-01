@@ -40,7 +40,7 @@ function stripLeadingZero(value: string, prefix: string): string {
 }
 
 function capitalizeWords(value: string): string {
-  return value.replace(/\b\w/g, (c) => c.toUpperCase())
+  return value.toUpperCase()
 }
 
 

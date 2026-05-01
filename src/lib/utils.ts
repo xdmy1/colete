@@ -119,3 +119,20 @@ export function weekIdToDateRange(weekId: string): string {
   const { label, range } = weekIdParts(weekId)
   return range ? `${label} (${range})` : label
 }
+
+// Filtru "Adăugat": data = potrivire exactă pe zi (timezone local), ora = de la HH:MM încolo (în ziua aceea)
+export function matchesAddedDateTime(createdAt: string, dateFilter: string, timeFilter: string): boolean {
+  if (!dateFilter && !timeFilter) return true
+  const d = new Date(createdAt)
+  if (dateFilter) {
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    if (`${yyyy}-${mm}-${dd}` !== dateFilter) return false
+  }
+  if (timeFilter) {
+    const [fh, fm] = timeFilter.split(':').map(Number)
+    if (d.getHours() * 60 + d.getMinutes() < fh * 60 + fm) return false
+  }
+  return true
+}

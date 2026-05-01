@@ -18,7 +18,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useAuth } from '../hooks/useAuth'
 import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel, useMarkAllDelivered } from '../hooks/useParcels'
-import { formatPrice, getDestLabel, ROUTES, calculatePrice } from '../lib/utils'
+import { formatPrice, getDestLabel, ROUTES, calculatePrice, matchesAddedDateTime } from '../lib/utils'
 import { exportParcelsToExcel, exportCashReportToExcel } from '../lib/exportExcel'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
@@ -53,6 +53,8 @@ export default function AdminDashboard() {
   const [routeFilter, setRouteFilter] = useState<string | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'delivered'>('all')
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'cod' | 'transfer'>('all')
+  const [dateFilter, setDateFilter] = useState('')
+  const [timeFilter, setTimeFilter] = useState('')
   const [search, setSearch] = useState('')
 
   const [assignedOnly, setAssignedOnly] = useState(false)
@@ -168,6 +170,10 @@ export default function AdminDashboard() {
       result = result.filter((p) => p.labels?.includes('L'))
     }
 
+    if (dateFilter || timeFilter) {
+      result = result.filter((p) => matchesAddedDateTime(p.created_at, dateFilter, timeFilter))
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase().trim()
       result = result.filter(
@@ -183,7 +189,7 @@ export default function AdminDashboard() {
     }
 
     return [...result].sort((a, b) => a.route_order - b.route_order || a.numeric_id - b.numeric_id)
-  }, [parcels, driverFilter, routeFilter, statusFilter, paymentFilter, assignedOnly, collectionsMode, search])
+  }, [parcels, driverFilter, routeFilter, statusFilter, paymentFilter, assignedOnly, collectionsMode, dateFilter, timeFilter, search])
 
   const activeParcels = filteredParcels.filter((p) => p.status === 'pending')
   const deliveredParcels = filteredParcels.filter((p) => p.status === 'delivered')
@@ -381,11 +387,41 @@ export default function AdminDashboard() {
         </button>
       </div>
 
+      {/* Adăugat: filtru data / ora */}
+      <div className="flex gap-2 mb-3 items-center">
+        <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 shrink-0">
+          <span>Adăugat:</span>
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="px-3 py-2 rounded-full border border-card-border bg-white text-sm font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-pill-green-border"
+          />
+        </label>
+        <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 shrink-0">
+          <span>de la</span>
+          <input
+            type="time"
+            value={timeFilter}
+            onChange={(e) => setTimeFilter(e.target.value)}
+            className="px-3 py-2 rounded-full border border-card-border bg-white text-sm font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-pill-green-border"
+          />
+        </label>
+        {(dateFilter || timeFilter) && (
+          <button
+            onClick={() => { setDateFilter(''); setTimeFilter('') }}
+            className="text-xs font-semibold text-slate-400 hover:text-slate-600 underline"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+
       {/* Results count + select all + export */}
       <div className="flex items-center justify-between mb-3 px-0.5">
         <p className="text-xs text-slate-400 font-medium">
           {filteredParcels.length} {collectionsMode ? 'colectari' : 'colete'}
-          {(driverFilter !== 'all' || routeFilter !== 'all' || statusFilter !== 'all' || search) &&
+          {(driverFilter !== 'all' || routeFilter !== 'all' || statusFilter !== 'all' || dateFilter || timeFilter || search) &&
             ` (din ${parcels?.length || 0})`}
         </p>
         <div className="flex items-center gap-3">
@@ -1088,7 +1124,7 @@ function AdminParcelModal({
 
           {/* Date added */}
           <p className="text-xs text-slate-400">
-            Adăugat: {new Date(parcel.created_at).toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' })}
+            Adăugat: {new Date(parcel.created_at).toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' })}, {new Date(parcel.created_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}
           </p>
 
           {editMode ? (

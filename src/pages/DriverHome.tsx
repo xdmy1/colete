@@ -7,7 +7,7 @@ import {
   useMarkDelivered,
   useUpdateParcel,
 } from '../hooks/useParcels'
-import { formatPrice, getDestLabel, calculatePrice } from '../lib/utils'
+import { formatPrice, getDestLabel, calculatePrice, matchesAddedDateTime } from '../lib/utils'
 import { exportCashReportToExcel } from '../lib/exportExcel'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
@@ -42,6 +42,8 @@ export default function DriverHome() {
   const [routeFilter, setRouteFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'delivered'>('all')
   const [search, setSearch] = useState('')
+  const [dateFilter, setDateFilter] = useState('')
+  const [timeFilter, setTimeFilter] = useState('')
   const [showCashReport, setShowCashReport] = useState(false)
   const [collectionsMode, setCollectionsMode] = useState(false)
   const hasCollections = (profile?.allowed_collection_countries?.length ?? 0) > 0
@@ -83,6 +85,9 @@ export default function DriverHome() {
         p.receiver_details.address.toLowerCase().includes(q) ||
         p.sender_details.address.toLowerCase().includes(q)
       )
+    }
+    if (dateFilter || timeFilter) {
+      result = result.filter(p => matchesAddedDateTime(p.created_at, dateFilter, timeFilter))
     }
     return result
   }
@@ -271,6 +276,36 @@ export default function DriverHome() {
             >
               Colectare
             </button>
+          </div>
+
+          {/* Adăugat: filtru data / ora */}
+          <div className="flex gap-2 mb-4 items-center flex-wrap">
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+              <span>Adăugat:</span>
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="px-3 py-1.5 rounded-full border border-card-border bg-white text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-pill-green-border"
+              />
+            </label>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+              <span>de la</span>
+              <input
+                type="time"
+                value={timeFilter}
+                onChange={(e) => setTimeFilter(e.target.value)}
+                className="px-3 py-1.5 rounded-full border border-card-border bg-white text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-pill-green-border"
+              />
+            </label>
+            {(dateFilter || timeFilter) && (
+              <button
+                onClick={() => { setDateFilter(''); setTimeFilter('') }}
+                className="text-xs font-semibold text-slate-400 hover:text-slate-600 underline"
+              >
+                Reset
+              </button>
+            )}
           </div>
 
           {/* Active parcels */}
@@ -794,7 +829,7 @@ function ParcelDetailModal({
 
         {/* Date added */}
         <p className="px-5 pt-2 text-xs text-slate-400">
-          Adăugat: {new Date(parcel.created_at).toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' })}
+          Adăugat: {new Date(parcel.created_at).toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' })}, {new Date(parcel.created_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}
         </p>
 
         {/* Photo */}

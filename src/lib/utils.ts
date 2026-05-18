@@ -121,6 +121,12 @@ export function weekIdToDateRange(weekId: string): string {
 }
 
 // Filtru "Adăugat": data = potrivire exactă pe zi (timezone local), ora = de la HH:MM încolo (în ziua aceea)
+// Pastreaza doar cifrele dintr-un nr de telefon (scoate +, spatii, paranteze, etc.)
+// Folosit pt cautare: "+44 7479 398828", "07479398828" si "44 7479-398828" matchuiesc la fel.
+export function normalizePhone(phone: string | null | undefined): string {
+  return (phone ?? '').replace(/\D+/g, '')
+}
+
 export function matchesAddedDateTime(createdAt: string, dateFilter: string, timeFilter: string): boolean {
   if (!dateFilter && !timeFilter) return true
   const d = new Date(createdAt)

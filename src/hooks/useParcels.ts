@@ -350,14 +350,26 @@ export function useArchivedParcels(excludedDestinations?: string[] | null) {
   return useQuery({
     queryKey: ['parcels', 'archived', excludedDestinations ?? []],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('parcels')
-        .select('*')
-        .eq('is_archived', true)
-        .order('created_at', { ascending: false })
+      // Supabase/PostgREST returneaza maxim 1000 randuri per cerere.
+      // Paginam in batch-uri de 1000 ca sa luam toata arhiva.
+      const PAGE_SIZE = 1000
+      const all: Parcel[] = []
+      let from = 0
+      while (true) {
+        const { data, error } = await supabase
+          .from('parcels')
+          .select('*')
+          .eq('is_archived', true)
+          .order('created_at', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1)
 
-      if (error) throw error
-      let parcels = data as Parcel[]
+        if (error) throw error
+        const batch = (data ?? []) as Parcel[]
+        all.push(...batch)
+        if (batch.length < PAGE_SIZE) break
+        from += PAGE_SIZE
+      }
+      let parcels = all
       if (excludedDestinations && excludedDestinations.length > 0) {
         parcels = parcels.filter(
           (p) =>

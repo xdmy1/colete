@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { ContactDetails } from '../../lib/types'
 import type { DestinationCode } from '../../lib/utils'
-import { calculatePrice, getCurrency, formatPrice, PHONE_PREFIX } from '../../lib/utils'
+import { calculatePrice, getCurrency, formatPrice, PHONE_PREFIX, normalizePhone } from '../../lib/utils'
 import { useContacts } from '../../hooks/useContacts'
 import Button from '../ui/Button'
 
@@ -66,11 +66,12 @@ function ContactAutocomplete({
   const wrapperRef = useRef<HTMLDivElement>(null)
 
   const query = value.toLowerCase().trim()
+  const queryDigits = normalizePhone(value)
   const suggestions = query.length >= 2
     ? contacts.filter(
         (c) =>
           c.name.toLowerCase().includes(query) ||
-          c.phone.includes(query)
+          (queryDigits.length >= 2 && normalizePhone(c.phone).includes(queryDigits))
       ).slice(0, 5)
     : []
 

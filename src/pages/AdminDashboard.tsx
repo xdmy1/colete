@@ -18,7 +18,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useAuth } from '../hooks/useAuth'
 import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel, useMarkAllDelivered } from '../hooks/useParcels'
-import { formatPrice, getDestLabel, ROUTES, calculatePrice, matchesAddedDateTime } from '../lib/utils'
+import { formatPrice, getDestLabel, ROUTES, calculatePrice, matchesAddedDateTime, normalizePhone } from '../lib/utils'
 import { exportParcelsToExcel, exportCashReportToExcel } from '../lib/exportExcel'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
@@ -176,13 +176,16 @@ export default function AdminDashboard() {
 
     if (search.trim()) {
       const q = search.toLowerCase().trim()
+      const qDigits = normalizePhone(search)
       result = result.filter(
         (p) =>
           p.human_id.toLowerCase().includes(q) ||
           p.receiver_details.name.toLowerCase().includes(q) ||
           p.sender_details.name.toLowerCase().includes(q) ||
-          p.receiver_details.phone.includes(q) ||
-          p.sender_details.phone.includes(q) ||
+          (qDigits.length > 0 && (
+            normalizePhone(p.receiver_details.phone).includes(qDigits) ||
+            normalizePhone(p.sender_details.phone).includes(qDigits)
+          )) ||
           p.receiver_details.address.toLowerCase().includes(q) ||
           p.sender_details.address.toLowerCase().includes(q)
       )
@@ -260,18 +263,45 @@ export default function AdminDashboard() {
     >
       {/* Stats bar */}
       <div className="grid grid-cols-3 gap-2.5 mb-4">
-        <div className="bg-white rounded-2xl p-3.5 border border-card-border text-center">
+        <button
+          type="button"
+          onClick={() => setStatusFilter('all')}
+          aria-pressed={statusFilter === 'all'}
+          className={`bg-white rounded-2xl p-3.5 border text-center transition-all active:scale-[0.98] ${
+            statusFilter === 'all'
+              ? 'border-slate-400 ring-2 ring-slate-300'
+              : 'border-card-border hover:border-slate-300'
+          }`}
+        >
           <p className="text-2xl font-extrabold text-slate-800">{parcels?.length || 0}</p>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Total</p>
-        </div>
-        <div className="bg-pill-orange-bg rounded-2xl p-3.5 border border-pill-orange-border text-center">
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter('pending')}
+          aria-pressed={statusFilter === 'pending'}
+          className={`bg-pill-orange-bg rounded-2xl p-3.5 border text-center transition-all active:scale-[0.98] ${
+            statusFilter === 'pending'
+              ? 'border-amber-500 ring-2 ring-amber-300'
+              : 'border-pill-orange-border hover:border-amber-400'
+          }`}
+        >
           <p className="text-2xl font-extrabold text-amber-700">{totalActive}</p>
           <p className="text-[10px] font-bold text-amber-600/70 uppercase tracking-wide">Active</p>
-        </div>
-        <div className="bg-pill-green-bg rounded-2xl p-3.5 border border-pill-green-border text-center">
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter('delivered')}
+          aria-pressed={statusFilter === 'delivered'}
+          className={`bg-pill-green-bg rounded-2xl p-3.5 border text-center transition-all active:scale-[0.98] ${
+            statusFilter === 'delivered'
+              ? 'border-emerald-500 ring-2 ring-emerald-300'
+              : 'border-pill-green-border hover:border-emerald-400'
+          }`}
+        >
           <p className="text-2xl font-extrabold text-emerald-700">{totalDelivered}</p>
           <p className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-wide">{collectionsMode ? 'Colectate' : 'Livrate'}</p>
-        </div>
+        </button>
       </div>
 
       {/* Search */}

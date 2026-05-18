@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useArchivedParcels, useAllDrivers } from '../hooks/useParcels'
 import { useAuth } from '../hooks/useAuth'
-import { formatPrice, getDestLabel, weekIdParts, ROUTES } from '../lib/utils'
+import { formatPrice, getDestLabel, weekIdParts, ROUTES, normalizePhone } from '../lib/utils'
 import { exportParcelsToExcel } from '../lib/exportExcel'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
@@ -41,11 +41,15 @@ export default function Archive() {
     }
     if (search.trim()) {
       const q = search.toLowerCase().trim()
+      const qDigits = normalizePhone(search)
       result = result.filter((p) =>
         p.human_id.toLowerCase().includes(q) ||
         p.receiver_details.name.toLowerCase().includes(q) ||
         p.sender_details.name.toLowerCase().includes(q) ||
-        p.receiver_details.phone.includes(q) ||
+        (qDigits.length > 0 && (
+          normalizePhone(p.receiver_details.phone).includes(qDigits) ||
+          normalizePhone(p.sender_details.phone).includes(qDigits)
+        )) ||
         p.receiver_details.address.toLowerCase().includes(q)
       )
     }

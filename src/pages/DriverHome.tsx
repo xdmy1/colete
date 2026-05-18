@@ -7,7 +7,7 @@ import {
   useMarkDelivered,
   useUpdateParcel,
 } from '../hooks/useParcels'
-import { formatPrice, getDestLabel, calculatePrice, matchesAddedDateTime } from '../lib/utils'
+import { formatPrice, getDestLabel, calculatePrice, matchesAddedDateTime, normalizePhone } from '../lib/utils'
 import { exportCashReportToExcel } from '../lib/exportExcel'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
@@ -76,12 +76,15 @@ export default function DriverHome() {
       )
     if (search.trim()) {
       const q = search.toLowerCase().trim()
+      const qDigits = normalizePhone(search)
       result = result.filter(p =>
         p.human_id.toLowerCase().includes(q) ||
         p.receiver_details.name.toLowerCase().includes(q) ||
         p.sender_details.name.toLowerCase().includes(q) ||
-        p.receiver_details.phone.includes(q) ||
-        p.sender_details.phone.includes(q) ||
+        (qDigits.length > 0 && (
+          normalizePhone(p.receiver_details.phone).includes(qDigits) ||
+          normalizePhone(p.sender_details.phone).includes(qDigits)
+        )) ||
         p.receiver_details.address.toLowerCase().includes(q) ||
         p.sender_details.address.toLowerCase().includes(q)
       )

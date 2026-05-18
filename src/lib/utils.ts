@@ -56,10 +56,10 @@ export function buildHumanId(
 }
 
 // ── Price calculation ──
-// UK routes: £2/kg  |  altele: €1.5/kg
+// UK routes: £1.5/kg  |  altele: €1.5/kg
 
-export function calculatePrice(weightKg: number, origin: DestinationCode, destination: DestinationCode): number {
-  const rate = (origin === 'UK' || destination === 'UK') ? 2.0 : 1.5
+export function calculatePrice(weightKg: number, _origin: DestinationCode, _destination: DestinationCode): number {
+  const rate = 1.5
   return Math.round(weightKg * rate * 100) / 100
 }
 

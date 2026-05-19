@@ -197,9 +197,13 @@ export default function AdminDashboard() {
   const activeParcels = filteredParcels.filter((p) => p.status === 'pending')
   const deliveredParcels = filteredParcels.filter((p) => p.status === 'delivered')
 
-  // Stats
-  const totalActive = parcels?.filter((p) => p.status === 'pending').length || 0
-  const totalDelivered = parcels?.filter((p) => p.status === 'delivered').length || 0
+  // Stats — respect collectionsMode so counts match the list below
+  const modeParcels = parcels?.filter((p) =>
+    collectionsMode ? p.record_type === 'collection' : p.record_type !== 'collection'
+  ) || []
+  const totalAll = modeParcels.length
+  const totalActive = modeParcels.filter((p) => p.status === 'pending').length
+  const totalDelivered = modeParcels.filter((p) => p.status === 'delivered').length
 
   // Dare de seama: COD livrate + achitate, grupate pe sofer
   const cashReport = useMemo(() => {
@@ -273,7 +277,7 @@ export default function AdminDashboard() {
               : 'border-card-border hover:border-slate-300'
           }`}
         >
-          <p className="text-2xl font-extrabold text-slate-800">{parcels?.length || 0}</p>
+          <p className="text-2xl font-extrabold text-slate-800">{totalAll}</p>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Total</p>
         </button>
         <button
@@ -350,7 +354,7 @@ export default function AdminDashboard() {
           <option value="all">Toți șoferii</option>
           {drivers?.map((driver) => {
             const count =
-              parcels?.filter((p) => p.driver_id === driver.id).length || 0
+              modeParcels.filter((p) => p.driver_id === driver.id).length || 0
             if (count === 0 && driver.role === 'admin' && !driver.excluded_destinations?.length) return null
             return (
               <option key={driver.id} value={driver.id}>
@@ -452,7 +456,7 @@ export default function AdminDashboard() {
         <p className="text-xs text-slate-400 font-medium">
           {filteredParcels.length} {collectionsMode ? 'colectari' : 'colete'}
           {(driverFilter !== 'all' || routeFilter !== 'all' || statusFilter !== 'all' || dateFilter || timeFilter || search) &&
-            ` (din ${parcels?.length || 0})`}
+            ` (din ${totalAll})`}
         </p>
         <div className="flex items-center gap-3">
           {filteredParcels.length > 0 && (

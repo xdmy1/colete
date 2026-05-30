@@ -250,6 +250,12 @@ export default function AdminDashboard() {
               $
             </button>
             <button
+              onClick={() => navigate('/clients')}
+              className="px-3 py-1.5 rounded-full text-sm font-medium text-purple-600 border border-purple-200 hover:bg-purple-50 transition-colors"
+            >
+              Clienți
+            </button>
+            <button
               onClick={() => navigate('/archive')}
               className="px-3 py-1.5 rounded-full text-sm font-medium text-slate-500 border border-card-border hover:bg-gray-50 transition-colors"
             >

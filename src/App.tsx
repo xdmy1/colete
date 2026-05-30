@@ -7,6 +7,7 @@ import AddParcel from './pages/AddParcel'
 import AddCollection from './pages/AddCollection'
 import AdminDashboard from './pages/AdminDashboard'
 import Archive from './pages/Archive'
+import Clients from './pages/Clients'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,6 +45,7 @@ function AuthenticatedRoutes() {
       <Route path="/add" element={<AddParcel />} />
       <Route path="/add-collection" element={<AddCollection />} />
       <Route path="/archive" element={<Archive />} />
+      <Route path="/clients" element={isAdmin ? <Clients /> : <Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

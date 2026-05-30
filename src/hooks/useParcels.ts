@@ -108,12 +108,14 @@ export function useDriverRoutes(driverId: string | undefined) {
   })
 }
 
-// Adauga colet nou
+// Adauga colet nou — accepta optional client_id / client_address_id (atribuit dinainte de upsert_client_with_address)
 export function useAddParcel(driverId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (parcelData: NewParcelData) => {
+    mutationFn: async (
+      parcelData: NewParcelData & { client_id?: string; client_address_id?: string }
+    ) => {
       const weekId = getCurrentWeekId()
 
       // 1. Ia urmatorul numeric_id
@@ -179,6 +181,8 @@ export function useAddParcel(driverId: string) {
         photo_url: photoUrls[0] ?? null,
         photo_urls: photoUrls,
         labels: [],
+        client_id: parcelData.client_id ?? null,
+        client_address_id: parcelData.client_address_id ?? null,
       }
 
       console.log('[ADD] inserting parcel:', insertData)

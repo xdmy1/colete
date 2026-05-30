@@ -56,6 +56,8 @@ export interface Parcel {
   delivered_at: string | null
   created_at: string
   record_type: 'parcel' | 'collection'
+  client_id: string | null
+  client_address_id: string | null
   updated_at: string
 }
 
@@ -79,4 +81,29 @@ export interface NewCollectionData {
   phone: string
   address: string
   notes: string
+}
+
+export interface Client {
+  id: string
+  client_number: number
+  name: string
+  phone: string
+  phone_digits: string
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ClientAddress {
+  id: string
+  client_id: string
+  recipient_name: string
+  recipient_phone: string
+  recipient_phone_digits: string
+  recipient_address: string
+  destination_country: DestinationCode
+  label: string | null
+  usage_count: number
+  last_used_at: string
+  created_at: string
 }

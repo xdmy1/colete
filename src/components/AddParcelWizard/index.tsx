@@ -9,15 +9,44 @@ import StepDetails from './StepDetails'
 import StepPhoto from './StepPhoto'
 import StepConfirm from './StepConfirm'
 
+export interface ParcelPrefill {
+  client_id?: string
+  client_address_id?: string
+  sender?: Partial<ContactDetails>
+  receiver?: Partial<ContactDetails>
+  delivery_destination?: DestinationCode
+  origin_code?: DestinationCode
+}
+
 interface AddParcelWizardProps {
-  onComplete: (data: NewParcelData) => void
+  onComplete: (data: NewParcelData, links: { client_id?: string; client_address_id?: string }) => void
   onCancel: () => void
   isSubmitting: boolean
   routes: { origin: DestinationCode; destination: DestinationCode; label: string }[]
   driverId: string
+  prefill?: ParcelPrefill | null
 }
 
 const emptyContact: ContactDetails = { name: '', phone: '', address: '' }
+
+function inferDefaultRoute(
+  routes: { origin: DestinationCode; destination: DestinationCode }[],
+  prefill?: ParcelPrefill | null
+): { origin: DestinationCode; destination: DestinationCode } {
+  if (prefill?.origin_code && prefill?.delivery_destination) {
+    return { origin: prefill.origin_code, destination: prefill.delivery_destination }
+  }
+  if (prefill?.delivery_destination) {
+    // alege ruta cu destinatia prefill-uita care exista in routes (preferand MD origin)
+    const md = routes.find(
+      (r) => r.destination === prefill.delivery_destination && r.origin === 'MD'
+    )
+    if (md) return { origin: md.origin, destination: md.destination }
+    const any = routes.find((r) => r.destination === prefill.delivery_destination)
+    if (any) return { origin: any.origin, destination: any.destination }
+  }
+  return { origin: 'MD', destination: 'UK' }
+}
 
 export default function AddParcelWizard({
   onComplete,
@@ -25,14 +54,19 @@ export default function AddParcelWizard({
   isSubmitting,
   routes,
   driverId,
+  prefill,
 }: AddParcelWizardProps) {
-  const [step, setStep] = useState(1)
+  const initialRoute = inferDefaultRoute(routes, prefill)
+  const hasPrefill = !!(prefill && (prefill.sender || prefill.receiver))
+  const [step, setStep] = useState(hasPrefill ? 2 : 1)
   const [previewHumanId, setPreviewHumanId] = useState<string | null>(null)
+  const [linkedClientId] = useState<string | undefined>(prefill?.client_id)
+  const [linkedAddressId] = useState<string | undefined>(prefill?.client_address_id)
   const [data, setData] = useState<NewParcelData>({
-    origin_code: 'MD',
-    delivery_destination: 'UK',
-    sender_details: { ...emptyContact },
-    receiver_details: { ...emptyContact },
+    origin_code: initialRoute.origin,
+    delivery_destination: initialRoute.destination,
+    sender_details: { ...emptyContact, ...(prefill?.sender ?? {}) } as ContactDetails,
+    receiver_details: { ...emptyContact, ...(prefill?.receiver ?? {}) } as ContactDetails,
     content_description: '',
     nr_bucati: 1,
     payment_status: 'cod' as const,
@@ -115,7 +149,7 @@ export default function AddParcelWizard({
   }
 
   function handleConfirm() {
-    onComplete(data)
+    onComplete(data, { client_id: linkedClientId, client_address_id: linkedAddressId })
   }
 
   return (

@@ -3,6 +3,7 @@ import type { ContactDetails } from '../../lib/types'
 import type { DestinationCode } from '../../lib/utils'
 import { calculatePrice, getCurrency, formatPrice, PHONE_PREFIX, normalizePhone } from '../../lib/utils'
 import { useContacts } from '../../hooks/useContacts'
+import { useClientByPhoneDigits } from '../../hooks/useClients'
 import Button from '../ui/Button'
 
 interface StepDetailsProps {
@@ -148,6 +149,8 @@ export default function StepDetails({
   const [locLoading, setLocLoading] = useState(false)
 
   const { data: contacts = [] } = useContacts()
+  const senderDigits = normalizePhone(sender.phone)
+  const { data: matchedClient } = useClientByPhoneDigits(senderDigits)
 
   const currency = getCurrency(originCode, deliveryDestination)
   const autoPrice = calculatePrice(weight, originCode, deliveryDestination)
@@ -251,8 +254,14 @@ export default function StepDetails({
 
       {/* Expeditor */}
       <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
-          Expeditor
+        <legend className="text-sm font-semibold text-slate-600 uppercase tracking-wide flex items-center gap-2">
+          <span>Expeditor</span>
+          {matchedClient && (
+            <span className="px-2 py-0.5 rounded-full bg-pill-green-bg text-emerald-700 border border-pill-green-border text-[10px] font-bold normal-case tracking-normal">
+              Client #{matchedClient.client_number}
+              {matchedClient.name ? ` · ${matchedClient.name}` : ''}
+            </span>
+          )}
         </legend>
         <ContactAutocomplete
           placeholder="Nume expeditor *"

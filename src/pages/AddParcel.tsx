@@ -1,17 +1,21 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useAddParcel, useAllDrivers, useDriverRoutes, useAllDriverRoutes } from '../hooks/useParcels'
+import { useUpsertClientWithAddress } from '../hooks/useClients'
 import type { NewParcelData } from '../lib/types'
 import { ROUTES, getDestLabel } from '../lib/utils'
 import type { DestinationCode } from '../lib/utils'
-import AddParcelWizard from '../components/AddParcelWizard'
+import AddParcelWizard, { type ParcelPrefill } from '../components/AddParcelWizard'
 import Button from '../components/ui/Button'
 
 export default function AddParcel() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { profile } = useAuth()
   const isAdmin = profile?.role === 'admin'
+  const prefill: ParcelPrefill | null = (location.state as { prefill?: ParcelPrefill } | null)?.prefill ?? null
+  const upsertClient = useUpsertClientWithAddress()
 
   const [adminSelectedDriver, setAdminSelectedDriver] = useState<string | null>(null)
 
@@ -45,14 +49,39 @@ export default function AddParcel() {
     : (allDrivers || [])
   const addParcel = useAddParcel(effectiveDriverId || '')
 
-  async function handleComplete(data: NewParcelData) {
+  async function handleComplete(
+    data: NewParcelData,
+    links: { client_id?: string; client_address_id?: string }
+  ) {
     if (!effectiveDriverId) {
       alert('Niciun șofer selectat!')
       return
     }
 
     try {
-      await addParcel.mutateAsync(data)
+      let clientId = links.client_id
+      let clientAddressId = links.client_address_id
+
+      // Upsert client + adresa pe baza datelor coletului (sender = client, receiver = adresa salvata).
+      // E best-effort: daca esueaza, coletul tot se salveaza fara legatura.
+      try {
+        const upserted = await upsertClient.mutateAsync({
+          sender_name: data.sender_details.name,
+          sender_phone: data.sender_details.phone,
+          recipient_name: data.receiver_details.name,
+          recipient_phone: data.receiver_details.phone,
+          recipient_address: data.receiver_details.address,
+          destination_country: data.delivery_destination,
+        })
+        if (upserted) {
+          clientId = upserted.client_id
+          clientAddressId = upserted.client_address_id ?? clientAddressId
+        }
+      } catch (clientErr) {
+        console.warn('[ADD] upsert client esuat, salvez coletul fara legatura:', clientErr)
+      }
+
+      await addParcel.mutateAsync({ ...data, client_id: clientId, client_address_id: clientAddressId })
       navigate('/')
     } catch (err: any) {
       const msg = err?.message || err?.error_description || JSON.stringify(err)
@@ -119,9 +148,10 @@ export default function AddParcel() {
     <AddParcelWizard
       onComplete={handleComplete}
       onCancel={() => navigate('/')}
-      isSubmitting={addParcel.isPending}
+      isSubmitting={addParcel.isPending || upsertClient.isPending}
       routes={availableRoutes}
       driverId={effectiveDriverId || ''}
+      prefill={prefill}
     />
   )
 }

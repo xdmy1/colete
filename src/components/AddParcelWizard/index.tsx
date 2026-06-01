@@ -79,33 +79,48 @@ export default function AddParcelWizard({
     setPreviewHumanId(null)
 
     async function fetchPreview() {
-      // 1. Ia range-ul șoferului pentru ruta asta
-      const { data: rangeRow } = await supabase
-        .from('driver_route_ranges')
-        .select('range_start, range_end')
-        .eq('driver_id', driverId)
-        .eq('origin', data.origin_code)
-        .eq('destination', data.delivery_destination)
-        .limit(1)
-        .single()
+      // 1. Ia range-ul șoferului pentru ruta asta + flag shared
+      const [{ data: rangeRow }, { data: profileRow }] = await Promise.all([
+        supabase
+          .from('driver_route_ranges')
+          .select('range_start, range_end')
+          .eq('driver_id', driverId)
+          .eq('origin', data.origin_code)
+          .eq('destination', data.delivery_destination)
+          .limit(1)
+          .single(),
+        supabase
+          .from('profiles')
+          .select('shared_pickup_counter')
+          .eq('id', driverId)
+          .single(),
+      ])
 
       if (!rangeRow) return // șoferul nu are range pentru ruta asta
 
       const { range_start, range_end } = rangeRow
+      const shared = !!profileRow?.shared_pickup_counter
 
       // 2. Cel mai mare numeric_id deja folosit în range-ul lui (săptămâna curentă, inclusiv arhivate)
+      //    Pentru soferi cu counter partajat (ex: repartizare_olanda BE+NL) ignoram origin/destination
       const weekId = getCurrentWeekId()
-      const { data: rows } = await supabase
+      let query = supabase
         .from('parcels')
         .select('numeric_id')
         .eq('driver_id', driverId)
         .eq('week_id', weekId)
-        .eq('origin_code', data.origin_code)
-        .eq('delivery_destination', data.delivery_destination)
         .gte('numeric_id', range_start)
         .lte('numeric_id', range_end)
         .order('numeric_id', { ascending: false })
         .limit(1)
+
+      if (!shared) {
+        query = query
+          .eq('origin_code', data.origin_code)
+          .eq('delivery_destination', data.delivery_destination)
+      }
+
+      const { data: rows } = await query
 
       const nextNum = rows?.[0]?.numeric_id ? rows[0].numeric_id + 1 : range_start
       setPreviewHumanId(buildHumanId(data.origin_code, data.delivery_destination, nextNum))

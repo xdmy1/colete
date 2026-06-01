@@ -47,7 +47,7 @@ const USERS: {
   },
   {
     username: 'oficiu',
-    pin: '1099',
+    pin: '1091',
     role: 'driver',
     routes: MD_OUT.map(dest => ({ origin: 'MD', destination: dest, range_start: 1, range_end: 99 })),
   },
@@ -141,8 +141,10 @@ const USERS: {
     username: 'repartizare_olanda',
     pin: '2020',
     role: 'driver',
+    // Counter partajat intre NL si BE: B-200, OL-201, OL-202, B-203... (vezi shared_pickup_counter pe profile)
     routes: [
       { origin: 'NL', destination: 'MD', range_start: 200, range_end: 299 }, // OL200-OL299
+      { origin: 'BE', destination: 'MD', range_start: 200, range_end: 299 }, // B200-B299 (acelasi range)
     ],
   },
 ]
@@ -210,7 +212,7 @@ async function seed() {
   console.log('   depozit              → PIN: 6006  MD→* [600-699]')
   console.log('   eugen                → PIN: 1919  MD→* [100-199]')
   console.log('   ilie                 → PIN: 9191  MD→* [900-999]')
-  console.log('   oficiu               → PIN: 1099  MD→* [1-99]')
+  console.log('   oficiu               → PIN: 1091  MD→* [1-99]')
   console.log('   gheorghe             → PIN: 3030  MD→* [300-349]')
   console.log('   stelian              → PIN: 3535  MD→* [350-399]')
   console.log('   ghenadie             → PIN: 4004  MD→BE [400-449]  BE→MD [450-499]')

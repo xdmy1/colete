@@ -7,6 +7,7 @@ export interface Profile {
   role: 'admin' | 'driver'
   excluded_destinations: string[] | null
   allowed_collection_countries: string[] | null
+  shared_pickup_counter: boolean
   created_at: string
 }
 

@@ -5,13 +5,7 @@ import { useAddCollection } from '../hooks/useParcels'
 import type { DestinationCode } from '../lib/utils'
 import { DESTINATIONS, PHONE_PREFIX, getDestLabel } from '../lib/utils'
 import Button from '../components/ui/Button'
-
-function stripLeadingZero(value: string, prefix: string): string {
-  if (value.startsWith(prefix) && value[prefix.length] === '0') {
-    return prefix + value.slice(prefix.length + 1)
-  }
-  return value
-}
+import PhoneInput from '../components/ui/PhoneInput'
 
 export default function AddCollection() {
   const navigate = useNavigate()
@@ -109,12 +103,11 @@ export default function AddCollection() {
               <label className="text-sm font-semibold text-slate-600 uppercase tracking-wide block mb-2">
                 Telefon
               </label>
-              <input
-                type="tel"
+              <PhoneInput
                 placeholder={`Telefon (${getDestLabel(country)})`}
+                prefix={PHONE_PREFIX[country]}
                 value={phone}
-                onChange={(e) => setPhone(stripLeadingZero(e.target.value, PHONE_PREFIX[country]))}
-                className={inputCls}
+                onChange={setPhone}
               />
               <p className="text-[11px] text-slate-400 mt-0.5 ml-1">fara 0 la inceput</p>
             </div>

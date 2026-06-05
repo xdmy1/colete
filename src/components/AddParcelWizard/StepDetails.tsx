@@ -5,6 +5,7 @@ import { calculatePrice, getCurrency, formatPrice, PHONE_PREFIX, normalizePhone 
 import { useContacts } from '../../hooks/useContacts'
 import { useClientByPhoneDigits } from '../../hooks/useClients'
 import Button from '../ui/Button'
+import PhoneInput from '../ui/PhoneInput'
 
 interface StepDetailsProps {
   originCode: DestinationCode
@@ -31,13 +32,6 @@ interface StepDetailsProps {
     manual_price?: number
     paid_mdl_amount?: number
   }
-}
-
-function stripLeadingZero(value: string, prefix: string): string {
-  if (value.startsWith(prefix) && value[prefix.length] === '0') {
-    return prefix + value.slice(prefix.length + 1)
-  }
-  return value
 }
 
 function capitalizeWords(value: string): string {
@@ -233,13 +227,12 @@ export default function StepDetails({
           onSelect={(c) => setReceiver({ name: capitalizeWords(c.name), phone: c.phone, address: c.address })}
           inputCls={inputCls}
         />
-        <div className="relative">
-          <input
-            type="tel"
+        <div>
+          <PhoneInput
             placeholder="Telefon destinatar *"
+            prefix={PHONE_PREFIX[deliveryDestination]}
             value={receiver.phone}
-            onChange={(e) => setReceiver({ ...receiver, phone: stripLeadingZero(e.target.value, PHONE_PREFIX[deliveryDestination]) })}
-            className={inputCls}
+            onChange={(next) => setReceiver({ ...receiver, phone: next })}
           />
           <p className="text-[11px] text-slate-400 mt-0.5 ml-1">fără 0 la început</p>
         </div>
@@ -271,13 +264,12 @@ export default function StepDetails({
           onSelect={(c) => setSender({ name: capitalizeWords(c.name), phone: c.phone, address: c.address })}
           inputCls={inputCls}
         />
-        <div className="relative">
-          <input
-            type="tel"
+        <div>
+          <PhoneInput
             placeholder="Telefon expeditor *"
+            prefix={PHONE_PREFIX[originCode]}
             value={sender.phone}
-            onChange={(e) => setSender({ ...sender, phone: stripLeadingZero(e.target.value, PHONE_PREFIX[originCode]) })}
-            className={inputCls}
+            onChange={(next) => setSender({ ...sender, phone: next })}
           />
           <p className="text-[11px] text-slate-400 mt-0.5 ml-1">fără 0 la început</p>
         </div>

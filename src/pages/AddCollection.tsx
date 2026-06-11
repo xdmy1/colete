@@ -106,7 +106,6 @@ export default function AddCollection() {
               <PhoneInput
                 placeholder={`Telefon (${getDestLabel(country)})`}
                 prefix={PHONE_PREFIX[country]}
-                altPrefix={PHONE_PREFIX.MD}
                 value={phone}
                 onChange={setPhone}
               />

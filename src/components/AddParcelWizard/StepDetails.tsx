@@ -231,6 +231,7 @@ export default function StepDetails({
           <PhoneInput
             placeholder="Telefon destinatar *"
             prefix={PHONE_PREFIX[deliveryDestination]}
+            altPrefix={PHONE_PREFIX.MD}
             value={receiver.phone}
             onChange={(next) => setReceiver({ ...receiver, phone: next })}
           />
@@ -268,6 +269,7 @@ export default function StepDetails({
           <PhoneInput
             placeholder="Telefon expeditor *"
             prefix={PHONE_PREFIX[originCode]}
+            altPrefix={PHONE_PREFIX.MD}
             value={sender.phone}
             onChange={(next) => setSender({ ...sender, phone: next })}
           />

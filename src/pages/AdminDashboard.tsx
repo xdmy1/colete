@@ -17,10 +17,10 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useAuth } from '../hooks/useAuth'
-import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel, useMarkAllDelivered } from '../hooks/useParcels'
+import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel, useMarkAllDelivered, useUpdateDriver } from '../hooks/useParcels'
 import { formatPrice, getDestLabel, ROUTES, calculatePrice, matchesAddedDateTime, normalizePhone } from '../lib/utils'
 import { exportParcelsToExcel, exportCashReportToExcel } from '../lib/exportExcel'
-import type { Parcel } from '../lib/types'
+import type { Parcel, Profile } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
 
@@ -74,6 +74,7 @@ export default function AdminDashboard() {
   const [showBulkDeliverConfirm, setShowBulkDeliverConfirm] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [showCashReport, setShowCashReport] = useState(false)
+  const [showDriverManager, setShowDriverManager] = useState(false)
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -254,6 +255,12 @@ export default function AdminDashboard() {
               className="px-3 py-1.5 rounded-full text-sm font-medium text-purple-600 border border-purple-200 hover:bg-purple-50 transition-colors"
             >
               Clienți
+            </button>
+            <button
+              onClick={() => setShowDriverManager(true)}
+              className="px-3 py-1.5 rounded-full text-sm font-medium text-indigo-600 border border-indigo-200 hover:bg-indigo-50 transition-colors"
+            >
+              Șoferi
             </button>
             <button
               onClick={() => navigate('/archive')}
@@ -800,6 +807,14 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Driver Manager Modal */}
+      {showDriverManager && (
+        <DriverManagerModal
+          drivers={drivers ?? []}
+          onClose={() => setShowDriverManager(false)}
+        />
       )}
 
       {/* Detail / Edit Modal */}
@@ -1375,6 +1390,188 @@ function AdminParcelModal({
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Driver Manager Modal — schimba nume + PIN ──
+function DriverManagerModal({
+  drivers,
+  onClose,
+}: {
+  drivers: Profile[]
+  onClose: () => void
+}) {
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const sorted = [...drivers].sort((a, b) => a.username.localeCompare(b.username))
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col border border-card-border"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-white border-b border-card-border px-5 py-4 flex items-center justify-between rounded-t-3xl shrink-0">
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-800">Șoferi</h2>
+            <p className="text-xs text-slate-400">Schimbă numele și PIN-ul</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 flex items-center justify-center rounded-full border border-card-border text-slate-400 hover:text-slate-600 hover:bg-gray-50"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="overflow-y-auto px-4 py-4 space-y-2">
+          {sorted.map((driver) => (
+            <DriverManagerRow
+              key={driver.id}
+              driver={driver}
+              isEditing={editingId === driver.id}
+              onEdit={() => setEditingId(driver.id)}
+              onDone={() => setEditingId(null)}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DriverManagerRow({
+  driver,
+  isEditing,
+  onEdit,
+  onDone,
+}: {
+  driver: Profile
+  isEditing: boolean
+  onEdit: () => void
+  onDone: () => void
+}) {
+  const updateDriver = useUpdateDriver()
+  const [name, setName] = useState(driver.username)
+  const [pin, setPin] = useState(driver.pin_code)
+  const [error, setError] = useState<string | null>(null)
+
+  // Reseteaza campurile cand se intra in editare
+  function startEdit() {
+    setName(driver.username)
+    setPin(driver.pin_code)
+    setError(null)
+    onEdit()
+  }
+
+  function cancel() {
+    setError(null)
+    onDone()
+  }
+
+  async function save() {
+    setError(null)
+    const trimmedName = name.trim().toLowerCase()
+    const trimmedPin = pin.trim()
+    const usernameChanged = trimmedName !== driver.username
+    const pinChanged = trimmedPin !== driver.pin_code
+
+    if (!usernameChanged && !pinChanged) {
+      onDone()
+      return
+    }
+    if (!/^[a-z0-9_]{2,}$/.test(trimmedName)) {
+      setError('Nume invalid (litere mici, cifre, _; minim 2 caractere)')
+      return
+    }
+    if (!/^\d{4,}$/.test(trimmedPin)) {
+      setError('PIN invalid (minim 4 cifre)')
+      return
+    }
+
+    try {
+      await updateDriver.mutateAsync({
+        driverId: driver.id,
+        username: usernameChanged ? trimmedName : undefined,
+        pin: pinChanged ? trimmedPin : undefined,
+      })
+      onDone()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Eroare la salvare')
+    }
+  }
+
+  if (!isEditing) {
+    return (
+      <button
+        onClick={startEdit}
+        className="w-full flex items-center justify-between px-4 py-3 rounded-2xl border border-card-border bg-white hover:border-indigo-300 hover:bg-indigo-50/30 transition-all text-left"
+      >
+        <div className="min-w-0">
+          <p className="text-base font-bold text-slate-800 truncate">{driver.username}</p>
+          <p className="text-xs text-slate-400">
+            {driver.role === 'admin' ? 'Admin' : 'Șofer'} · PIN {driver.pin_code}
+          </p>
+        </div>
+        <svg className="w-4 h-4 text-slate-300 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+      </button>
+    )
+  }
+
+  const inputCls = 'w-full px-4 py-2.5 rounded-xl border border-card-border bg-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300 transition-colors'
+
+  return (
+    <div className="px-4 py-3.5 rounded-2xl border border-indigo-200 bg-indigo-50/30 space-y-3">
+      <div className="space-y-1">
+        <label className="text-xs font-semibold text-slate-500">Nume (folosit și la login)</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          className={inputCls}
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs font-semibold text-slate-500">PIN (cod de autentificare)</label>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+          className={inputCls}
+        />
+      </div>
+
+      {error && (
+        <p className="text-xs font-medium text-red-500">{error}</p>
+      )}
+
+      <div className="flex gap-2.5 pt-0.5">
+        <button
+          onClick={cancel}
+          disabled={updateDriver.isPending}
+          className="flex-1 py-2.5 rounded-full border border-card-border text-slate-500 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+        >
+          Anulează
+        </button>
+        <button
+          onClick={save}
+          disabled={updateDriver.isPending}
+          className="flex-1 py-2.5 rounded-full bg-indigo-600 text-white font-bold text-sm border border-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-50"
+        >
+          {updateDriver.isPending ? 'Se salvează...' : 'Salvează'}
+        </button>
       </div>
     </div>
   )

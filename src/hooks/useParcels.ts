@@ -77,6 +77,44 @@ export function useAllDrivers() {
   })
 }
 
+// ADMIN: schimba numele (username) si/sau PIN-ul unui sofer.
+// PIN-ul e si parola de login si username-ul formeaza email-ul, deci nu pot fi
+// schimbate doar in tabela `profiles` — apelam Edge Function `admin-update-driver`
+// care actualizeaza atomic auth.users + profiles cu service role.
+export function useUpdateDriver() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      driverId,
+      username,
+      pin,
+    }: {
+      driverId: string
+      username?: string
+      pin?: string
+    }) => {
+      const { data, error } = await supabase.functions.invoke('admin-update-driver', {
+        body: { driverId, username, pin },
+      })
+      // functions.invoke nu arunca pe status 4xx/5xx — citim eroarea din body
+      if (error) {
+        const ctx = (error as { context?: Response }).context
+        if (ctx && typeof ctx.json === 'function') {
+          const payload = await ctx.json().catch(() => null)
+          throw new Error(payload?.error || error.message)
+        }
+        throw new Error(error.message)
+      }
+      if (data?.error) throw new Error(data.error)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drivers'] })
+    },
+  })
+}
+
 // Rutele disponibile ale unui sofer (din driver_route_ranges)
 // ADMIN: toate rutele tuturor soferilor (pentru filtrare in AddParcel)
 export function useAllDriverRoutes() {

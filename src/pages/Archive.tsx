@@ -4,6 +4,7 @@ import { useArchivedParcels, useAllDrivers } from '../hooks/useParcels'
 import { useAuth } from '../hooks/useAuth'
 import { formatPrice, getDestLabel, weekIdParts, ROUTES, normalizePhone } from '../lib/utils'
 import { exportParcelsToExcel } from '../lib/exportExcel'
+import { backdropClose } from '../lib/backdropClose'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
@@ -249,7 +250,7 @@ export default function Archive() {
       {selectedParcel && (
         <div
           className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center"
-          onClick={() => setSelectedParcel(null)}
+          {...backdropClose(() => setSelectedParcel(null))}
         >
           <div
             className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92vh] overflow-y-auto border border-card-border"

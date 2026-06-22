@@ -9,6 +9,7 @@ import {
 } from '../hooks/useParcels'
 import { formatPrice, getDestLabel, calculatePrice, matchesAddedDateTime, normalizePhone } from '../lib/utils'
 import { exportCashReportToExcel } from '../lib/exportExcel'
+import { backdropClose } from '../lib/backdropClose'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
@@ -803,7 +804,7 @@ function ParcelDetailModal({
   return (
     <div
       className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 flex items-end sm:items-center justify-center"
-      onClick={onClose}
+      {...backdropClose(onClose)}
     >
       <div
         className="bg-white w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-card-border"

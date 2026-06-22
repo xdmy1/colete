@@ -12,6 +12,7 @@ import {
 import { useAllParcels } from '../hooks/useParcels'
 import { useAuth } from '../hooks/useAuth'
 import { formatPrice, getDestLabel, normalizePhone } from '../lib/utils'
+import { backdropClose } from '../lib/backdropClose'
 import type { Client, ClientAddress, Parcel } from '../lib/types'
 
 interface ClientStats {
@@ -291,7 +292,7 @@ function ClientDetailModal({
   return (
     <div
       className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center"
-      onClick={onClose}
+      {...backdropClose(onClose)}
     >
       <div
         className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92vh] overflow-y-auto border border-card-border"

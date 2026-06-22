@@ -20,6 +20,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel, useMarkAllDelivered, useUpdateDriver } from '../hooks/useParcels'
 import { formatPrice, getDestLabel, ROUTES, calculatePrice, matchesAddedDateTime, normalizePhone } from '../lib/utils'
 import { exportParcelsToExcel, exportCashReportToExcel } from '../lib/exportExcel'
+import { backdropClose } from '../lib/backdropClose'
 import type { Parcel, Profile } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
@@ -1116,7 +1117,7 @@ function AdminParcelModal({
   return (
     <div
       className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center"
-      onClick={onClose}
+      {...backdropClose(onClose)}
     >
       <div
         className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92vh] overflow-y-auto border border-card-border"
@@ -1409,7 +1410,7 @@ function DriverManagerModal({
   return (
     <div
       className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center"
-      onClick={onClose}
+      {...backdropClose(onClose)}
     >
       <div
         className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col border border-card-border"

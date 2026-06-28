@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useArchivedParcels, useAllDrivers } from '../hooks/useParcels'
+import { useArchivedParcels, useAllDrivers, useUpdateParcel } from '../hooks/useParcels'
 import { useAuth } from '../hooks/useAuth'
 import { formatPrice, getDestLabel, weekIdParts, ROUTES, normalizePhone } from '../lib/utils'
 import { exportParcelsToExcel } from '../lib/exportExcel'
@@ -8,6 +8,7 @@ import { backdropClose } from '../lib/backdropClose'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
+import AddPhotos from '../components/AddPhotos'
 
 export default function Archive() {
   const navigate = useNavigate()
@@ -18,6 +19,7 @@ export default function Archive() {
   const [driverFilter, setDriverFilter] = useState<string | 'all'>('all')
   const [weekFilter, setWeekFilter] = useState<string | 'all'>('all')
   const [routeFilter, setRouteFilter] = useState<string>('all')
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'cod' | 'transfer'>('all')
   const [search, setSearch] = useState('')
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null)
   const [isExporting, setIsExporting] = useState(false)
@@ -40,6 +42,13 @@ export default function Archive() {
       const [origin, dest] = routeFilter.split('-')
       result = result.filter((p) => p.origin_code === origin && p.delivery_destination === dest)
     }
+    if (paymentFilter !== 'all') {
+      result = result.filter((p) =>
+        paymentFilter === 'paid' ? p.payment_status === 'paid' :
+        paymentFilter === 'transfer' ? p.payment_status === 'transfer' :
+        (p.payment_status === 'cod' || !p.payment_status)
+      )
+    }
     if (search.trim()) {
       const q = search.toLowerCase().trim()
       const qDigits = normalizePhone(search)
@@ -55,7 +64,7 @@ export default function Archive() {
       )
     }
     return result
-  }, [parcels, driverFilter, weekFilter, routeFilter, search])
+  }, [parcels, driverFilter, weekFilter, routeFilter, paymentFilter, search])
 
   function getDriverName(driverId: string) {
     return drivers?.find((d) => d.id === driverId)?.username || 'Necunoscut'
@@ -154,6 +163,17 @@ export default function Archive() {
             </option>
           ))}
         </select>
+
+        <select
+          value={paymentFilter}
+          onChange={(e) => setPaymentFilter(e.target.value as 'all' | 'paid' | 'cod' | 'transfer')}
+          className="px-4 py-2 rounded-full border border-card-border bg-white text-sm font-medium text-slate-600 focus:outline-none focus:ring-1 focus:ring-pill-green-border shrink-0"
+        >
+          <option value="all">Toate plățile</option>
+          <option value="paid">Achitat</option>
+          <option value="cod">La livrare</option>
+          <option value="transfer">Transfer</option>
+        </select>
       </div>
 
       <div className="flex items-center justify-between mb-4 px-0.5">
@@ -248,86 +268,187 @@ export default function Archive() {
 
       {/* Detail modal */}
       {selectedParcel && (
-        <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center"
-          {...backdropClose(() => setSelectedParcel(null))}
-        >
-          <div
-            className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92vh] overflow-y-auto border border-card-border"
-            onClick={(e) => e.stopPropagation()}
+        <ArchiveParcelModal
+          parcel={selectedParcel}
+          driverName={getDriverName(selectedParcel.driver_id)}
+          onClose={() => setSelectedParcel(null)}
+        />
+      )}
+    </Layout>
+  )
+}
+
+function paymentLabel(status: Parcel['payment_status']) {
+  if (status === 'paid') return 'Achitat'
+  if (status === 'transfer') return 'Transfer'
+  return 'La livrare'
+}
+
+// Modal arhivă: vizualizare + editare sumă / metodă de plată / poze noi
+function ArchiveParcelModal({
+  parcel,
+  driverName,
+  onClose,
+}: {
+  parcel: Parcel
+  driverName: string
+  onClose: () => void
+}) {
+  const updateParcel = useUpdateParcel()
+  const [editMode, setEditMode] = useState(false)
+  const [price, setPrice] = useState(parcel.price)
+  const [paymentStatus, setPaymentStatus] = useState<'paid' | 'cod' | 'transfer'>(parcel.payment_status)
+  const [transferRecipient, setTransferRecipient] = useState(parcel.transfer_recipient || '')
+  const [newPhotos, setNewPhotos] = useState<File[]>([])
+
+  const existingPhotoCount = parcel.photo_urls?.length || (parcel.photo_url ? 1 : 0)
+  const inputCls = 'w-full px-4 py-2.5 rounded-xl border border-card-border bg-white text-sm focus:outline-none focus:ring-1 focus:ring-pill-green-border focus:border-pill-green-border transition-colors'
+
+  async function handleSave() {
+    await updateParcel.mutateAsync({
+      parcel,
+      updates: {
+        price,
+        payment_status: paymentStatus,
+        transfer_recipient: paymentStatus === 'transfer' ? transferRecipient || null : null,
+      },
+      newPhotos,
+    })
+    onClose()
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center"
+      {...backdropClose(onClose)}
+    >
+      <div
+        className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92vh] overflow-y-auto border border-card-border"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-white border-b border-card-border px-5 py-4 flex items-center justify-between rounded-t-3xl z-10">
+          <div>
+            <h2 className="text-xl font-extrabold text-slate-800">{parcel.human_id}</h2>
+            <p className="text-xs text-slate-400 font-medium">
+              {getDestLabel(parcel.origin_code)} → {getDestLabel(parcel.delivery_destination)} · {driverName}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 flex items-center justify-center rounded-full border border-card-border text-slate-400 hover:text-slate-600 hover:bg-gray-50 transition-colors"
           >
-            <div className="sticky top-0 bg-white border-b border-card-border px-5 py-4 flex items-center justify-between rounded-t-3xl z-10">
-              <div>
-                <h2 className="text-xl font-extrabold text-slate-800">{selectedParcel.human_id}</h2>
-                <p className="text-xs text-slate-400 font-medium">
-                  {getDestLabel(selectedParcel.origin_code)} → {getDestLabel(selectedParcel.delivery_destination)} · {getDriverName(selectedParcel.driver_id)}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedParcel(null)}
-                className="w-9 h-9 flex items-center justify-center rounded-full border border-card-border text-slate-400 hover:text-slate-600 hover:bg-gray-50 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          {(parcel.photo_urls?.length || parcel.photo_url) && (
+            <div className="rounded-2xl overflow-hidden border border-card-border">
+              <ParcelPhoto photoPaths={parcel.photo_urls?.length ? parcel.photo_urls : parcel.photo_url ? [parcel.photo_url] : []} className="w-full max-h-48 object-cover" />
             </div>
-            <div className="px-5 py-4 space-y-3">
-              {(selectedParcel.photo_urls?.length || selectedParcel.photo_url) && (
-                <div className="rounded-2xl overflow-hidden border border-card-border">
-                  <ParcelPhoto photoPaths={selectedParcel.photo_urls?.length ? selectedParcel.photo_urls : selectedParcel.photo_url ? [selectedParcel.photo_url] : []} className="w-full max-h-48 object-cover" />
-                </div>
+          )}
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-3 py-1 rounded-full bg-pill-green-bg text-emerald-700 text-xs font-bold border border-pill-green-border">
+              Livrat
+            </span>
+            <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold border border-blue-200">
+              {paymentLabel(parcel.payment_status)}
+            </span>
+            <span className="text-base font-bold text-emerald-700 ml-auto">
+              {formatPrice(parcel.price, parcel.currency)}
+            </span>
+          </div>
+
+          {editMode ? (
+            <div className="space-y-3 pt-1">
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block font-medium">Sumă ({parcel.currency})</label>
+                <input type="number" step="0.01" min="0" className={inputCls} value={price} onChange={(e) => setPrice(Number(e.target.value))} />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block font-medium">Metodă de plată</label>
+                <select className={inputCls} value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as 'paid' | 'cod' | 'transfer')}>
+                  <option value="cod">Achitare la livrare (COD)</option>
+                  <option value="paid">Achitat</option>
+                  <option value="transfer">Transfer</option>
+                </select>
+              </div>
+              {paymentStatus === 'transfer' && (
+                <input className={inputCls} value={transferRecipient} onChange={(e) => setTransferRecipient(e.target.value)} placeholder="Beneficiar transfer" />
               )}
 
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-pill-green-bg text-emerald-700 text-xs font-bold border border-pill-green-border">
-                  Livrat
-                </span>
-                <span className="text-base font-bold text-emerald-700 ml-auto">
-                  {formatPrice(selectedParcel.price, selectedParcel.currency)}
-                </span>
-              </div>
+              <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-1">
+                Poze {existingPhotoCount > 0 && `(${existingPhotoCount} existente)`}
+              </h3>
+              <AddPhotos files={newPhotos} onChange={setNewPhotos} />
 
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setEditMode(false)}
+                  className="flex-1 py-3 rounded-full border border-card-border text-slate-500 font-semibold hover:bg-gray-50 text-sm transition-colors"
+                >
+                  Anulează
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={updateParcel.isPending}
+                  className="flex-1 py-3 rounded-full bg-pill-green-bg text-emerald-800 font-bold border border-pill-green-border hover:bg-emerald-100 disabled:opacity-50 text-sm transition-colors"
+                >
+                  {updateParcel.isPending ? 'Se salvează...' : 'Salvează'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
               <div className="rounded-2xl p-4 space-y-1.5 border border-card-border">
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expeditor</h3>
-                <p className="text-base font-bold text-slate-800">{selectedParcel.sender_details.name}</p>
-                <p className="text-xs text-slate-400">{selectedParcel.sender_details.phone}</p>
-                <p className="text-xs text-slate-400">{selectedParcel.sender_details.address}</p>
+                <p className="text-base font-bold text-slate-800">{parcel.sender_details.name}</p>
+                <p className="text-xs text-slate-400">{parcel.sender_details.phone}</p>
+                <p className="text-xs text-slate-400">{parcel.sender_details.address}</p>
               </div>
 
               <div className="rounded-2xl p-4 space-y-1.5 border border-card-border">
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Destinatar</h3>
-                <p className="text-base font-bold text-slate-800">{selectedParcel.receiver_details.name}</p>
-                <p className="text-xs text-slate-400">{selectedParcel.receiver_details.phone}</p>
-                <p className="text-xs text-slate-400">{selectedParcel.receiver_details.address}</p>
+                <p className="text-base font-bold text-slate-800">{parcel.receiver_details.name}</p>
+                <p className="text-xs text-slate-400">{parcel.receiver_details.phone}</p>
+                <p className="text-xs text-slate-400">{parcel.receiver_details.address}</p>
               </div>
 
               <div className="rounded-2xl p-4 space-y-1.5 border border-card-border">
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Detalii</h3>
-                {selectedParcel.content_description && (
-                  <p className="text-xs text-slate-500">Conținut: {selectedParcel.content_description}</p>
+                {parcel.content_description && (
+                  <p className="text-xs text-slate-500">Conținut: {parcel.content_description}</p>
                 )}
-                <p className="text-xs text-slate-500">Greutate: {selectedParcel.weight} kg</p>
+                <p className="text-xs text-slate-500">Greutate: {parcel.weight} kg</p>
               </div>
 
-              {selectedParcel.delivered_at && (
+              {parcel.delivered_at && (
                 <div className="bg-pill-green-bg/50 rounded-2xl p-4 space-y-1.5 border border-pill-green-border">
                   <h3 className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Livrare</h3>
                   <p className="text-xs text-slate-500">
-                    Livrat: {new Date(selectedParcel.delivered_at).toLocaleString('ro-RO')}
+                    Livrat: {new Date(parcel.delivered_at).toLocaleString('ro-RO')}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Client mulțumit: {selectedParcel.client_satisfied === null ? '—' : selectedParcel.client_satisfied ? 'Da' : 'Nu'}
+                    Client mulțumit: {parcel.client_satisfied === null ? '—' : parcel.client_satisfied ? 'Da' : 'Nu'}
                   </p>
-                  {selectedParcel.delivery_note && (
-                    <p className="text-xs text-slate-500">Notă: {selectedParcel.delivery_note}</p>
+                  {parcel.delivery_note && (
+                    <p className="text-xs text-slate-500">Notă: {parcel.delivery_note}</p>
                   )}
                 </div>
               )}
-            </div>
-          </div>
+
+              <button
+                onClick={() => setEditMode(true)}
+                className="w-full py-3 rounded-full bg-slate-800 text-white font-bold text-sm border border-slate-800 hover:bg-slate-700 transition-colors"
+              >
+                Editează
+              </button>
+            </>
+          )}
         </div>
-      )}
-    </Layout>
+      </div>
+    </div>
   )
 }

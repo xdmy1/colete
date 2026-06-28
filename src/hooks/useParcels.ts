@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Parcel, NewParcelData, NewCollectionData, Profile } from '../lib/types'
 import { getParcelAllPhotoPaths, batchPrefetchSignedUrls } from './usePhotoUrl'
+import { compressImage } from '../lib/compressImage'
 import {
   calculatePrice,
   getCurrency,
@@ -353,15 +354,18 @@ export function useTransferParcels() {
 }
 
 // ADMIN: edit parcel details (fix mistakes)
+// Accepta optional `newPhotos` — poze adaugate ulterior (la editare). Sunt
+// incarcate in folderul coletului si adaugate la photo_urls existente.
 export function useUpdateParcel() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async ({
-      parcelId,
+      parcel,
       updates,
+      newPhotos,
     }: {
-      parcelId: string
+      parcel: Parcel
       updates: {
         sender_details?: { name: string; phone: string; address: string }
         receiver_details?: { name: string; phone: string; address: string }
@@ -372,11 +376,36 @@ export function useUpdateParcel() {
         payment_status?: 'paid' | 'cod' | 'transfer'
         transfer_recipient?: string | null
       }
+      newPhotos?: File[]
     }) => {
+      const finalUpdates: Record<string, unknown> = { ...updates }
+
+      if (newPhotos && newPhotos.length > 0) {
+        const photoUrls = parcel.photo_urls?.length
+          ? [...parcel.photo_urls]
+          : parcel.photo_url
+            ? [parcel.photo_url]
+            : []
+
+        for (const file of newPhotos) {
+          const compressed = file.size > 200_000 ? await compressImage(file) : file
+          // Numele e unic (uuid) ca sa nu se ciocneasca cu pozele existente
+          const filePath = `${parcel.driver_id}/${parcel.week_id}/${parcel.id}_add_${crypto.randomUUID()}.jpg`
+          const { error: uploadError } = await supabase.storage
+            .from('parcels')
+            .upload(filePath, compressed, { upsert: true })
+          if (uploadError) throw uploadError
+          photoUrls.push(filePath)
+        }
+
+        finalUpdates.photo_urls = photoUrls
+        finalUpdates.photo_url = photoUrls[0] ?? null
+      }
+
       const { error } = await supabase
         .from('parcels')
-        .update(updates)
-        .eq('id', parcelId)
+        .update(finalUpdates)
+        .eq('id', parcel.id)
 
       if (error) throw error
     },

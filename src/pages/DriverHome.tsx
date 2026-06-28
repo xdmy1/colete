@@ -13,6 +13,7 @@ import { backdropClose } from '../lib/backdropClose'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
+import AddPhotos from '../components/AddPhotos'
 
 // ── Phone icon SVG ──
 function PhoneIcon({ className = 'w-5 h-5' }: { className?: string }) {
@@ -397,8 +398,8 @@ export default function DriverHome() {
           editMode={editMode}
           onClose={() => { setSelectedParcel(null); setEditMode(false) }}
           onEdit={() => setEditMode(true)}
-          onSave={async (updates) => {
-            await updateParcel.mutateAsync({ parcelId: selectedParcel.id, updates })
+          onSave={async (updates, newPhotos) => {
+            await updateParcel.mutateAsync({ parcel: selectedParcel, updates, newPhotos })
             setEditMode(false)
             setSelectedParcel(null)
           }}
@@ -768,7 +769,7 @@ function ParcelDetailModal({
     price?: number
     payment_status?: 'paid' | 'cod' | 'transfer'
     transfer_recipient?: string | null
-  }) => void
+  }, newPhotos?: File[]) => void
   isSaving: boolean
   onMarkDelivered?: () => void
 }) {
@@ -784,7 +785,9 @@ function ParcelDetailModal({
   const [manualPrice, setManualPrice] = useState(parcel.price)
   const [paymentStatus, setPaymentStatus] = useState<'paid' | 'cod' | 'transfer'>(parcel.payment_status)
   const [transferRecipient, setTransferRecipient] = useState(parcel.transfer_recipient || '')
+  const [newPhotos, setNewPhotos] = useState<File[]>([])
 
+  const existingPhotoCount = parcel.photo_urls?.length || (parcel.photo_url ? 1 : 0)
   const inputCls = 'w-full px-4 py-2.5 rounded-xl border border-card-border bg-white text-sm focus:outline-none focus:ring-1 focus:ring-pill-green-border focus:border-pill-green-border transition-colors'
   const selectCls = inputCls
 
@@ -798,7 +801,7 @@ function ParcelDetailModal({
       price: manualPrice,
       payment_status: paymentStatus,
       transfer_recipient: paymentStatus === 'transfer' ? transferRecipient || null : null,
-    })
+    }, newPhotos)
   }
 
   return (
@@ -891,6 +894,11 @@ function ParcelDetailModal({
               {paymentStatus === 'transfer' && (
                 <input className={inputCls} value={transferRecipient} onChange={(e) => setTransferRecipient(e.target.value)} placeholder="Beneficiar transfer" />
               )}
+
+              <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-1">
+                Poze {existingPhotoCount > 0 && `(${existingPhotoCount} existente)`}
+              </h3>
+              <AddPhotos files={newPhotos} onChange={setNewPhotos} />
 
               <div className="flex gap-3 pt-2">
                 <button

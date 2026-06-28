@@ -24,6 +24,7 @@ import { backdropClose } from '../lib/backdropClose'
 import type { Parcel, Profile } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
+import AddPhotos from '../components/AddPhotos'
 
 function DragIcon() {
   return (
@@ -826,8 +827,8 @@ export default function AdminDashboard() {
           editMode={editMode}
           onClose={() => { setSelectedParcel(null); setEditMode(false) }}
           onEdit={() => setEditMode(true)}
-          onSave={async (updates) => {
-            await updateParcel.mutateAsync({ parcelId: selectedParcel.id, updates })
+          onSave={async (updates, newPhotos) => {
+            await updateParcel.mutateAsync({ parcel: selectedParcel, updates, newPhotos })
             setEditMode(false)
             setSelectedParcel(null)
           }}
@@ -1072,7 +1073,7 @@ function AdminParcelModal({
     price?: number
     payment_status?: 'paid' | 'cod' | 'transfer'
     transfer_recipient?: string | null
-  }) => void
+  }, newPhotos?: File[]) => void
   onDelete: () => void
   isSaving: boolean
   isDeleting: boolean
@@ -1089,15 +1090,17 @@ function AdminParcelModal({
   const [manualPrice, setManualPrice] = useState(parcel.price)
   const [paymentStatus, setPaymentStatus] = useState<'paid' | 'cod' | 'transfer'>(parcel.payment_status)
   const [transferRecipient, setTransferRecipient] = useState(parcel.transfer_recipient || '')
+  const [newPhotos, setNewPhotos] = useState<File[]>([])
 
   const isCollection = parcel.record_type === 'collection'
+  const existingPhotoCount = parcel.photo_urls?.length || (parcel.photo_url ? 1 : 0)
 
   function handleSave() {
     if (isCollection) {
       onSave({
         sender_details: { name: '', phone: senderPhone, address: senderAddress },
         content_description: contentDesc || null,
-      })
+      }, newPhotos)
     } else {
       onSave({
         sender_details: { name: senderName, phone: senderPhone, address: senderAddress },
@@ -1108,7 +1111,7 @@ function AdminParcelModal({
         price: manualPrice,
         payment_status: paymentStatus,
         transfer_recipient: paymentStatus === 'transfer' ? transferRecipient || null : null,
-      })
+      }, newPhotos)
     }
   }
 
@@ -1238,6 +1241,11 @@ function AdminParcelModal({
               )}
                 </>
               )}
+
+              <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-1">
+                Poze {existingPhotoCount > 0 && `(${existingPhotoCount} existente)`}
+              </h3>
+              <AddPhotos files={newPhotos} onChange={setNewPhotos} />
 
               <div className="flex gap-3 pt-2">
                 <button

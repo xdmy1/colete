@@ -239,7 +239,7 @@ export default function AdminDashboard() {
             Anulează
           </button>
         ) : (
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
             <button
               onClick={() => setSelectMode(true)}
               className="px-3 py-1.5 rounded-full text-sm font-medium text-emerald-600 border border-pill-green-border hover:bg-pill-green-bg transition-colors"

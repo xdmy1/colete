@@ -142,7 +142,7 @@ export default function DriverHome() {
     <Layout
       title={profile?.username || 'Colete'}
       rightAction={
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
           <button
             onClick={() => setShowCashReport(true)}
             className="px-3 py-1.5 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 transition-colors"

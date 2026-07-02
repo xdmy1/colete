@@ -39,10 +39,12 @@ export default function Layout({
                 </svg>
               </button>
             )}
-            <h1 className="text-lg font-semibold text-slate-800 flex-1 tracking-tight">
+            <h1 className="text-lg font-semibold text-slate-800 min-w-0 truncate tracking-tight">
               {title}
             </h1>
-            {rightAction}
+            {rightAction && (
+              <div className="flex-1 min-w-0 flex justify-end">{rightAction}</div>
+            )}
           </div>
         </header>
       )}

@@ -373,23 +373,27 @@ export default function DriverHome() {
         </>
       )}
 
-      {/* FAB buttons */}
-      {hasCollections && (
-        <button
-          onClick={() => navigate('/add-collection')}
-          className="fixed bottom-6 left-6 w-14 h-14 bg-purple-50 text-purple-600 rounded-full border border-purple-300 hover:bg-purple-100 active:scale-95 transition-all flex items-center justify-center z-20 shadow-sm text-xl font-extrabold"
-        >
-          C
-        </button>
-      )}
-      <button
-        onClick={() => navigate('/add')}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-white text-emerald-600 rounded-full border border-card-border hover:bg-pill-green-bg hover:border-pill-green-border active:scale-95 transition-all flex items-center justify-center z-20 shadow-sm"
-      >
-        <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-        </svg>
-      </button>
+      {/* FAB buttons — aliniate la coloana centrată */}
+      <div className="fixed inset-x-0 bottom-0 z-20 pointer-events-none">
+        <div className="relative max-w-lg mx-auto">
+          {hasCollections && (
+            <button
+              onClick={() => navigate('/add-collection')}
+              className="pointer-events-auto absolute bottom-6 left-6 w-14 h-14 bg-purple-50 text-purple-600 rounded-full border border-purple-300 hover:bg-purple-100 active:scale-95 transition-all flex items-center justify-center shadow-sm text-xl font-extrabold"
+            >
+              C
+            </button>
+          )}
+          <button
+            onClick={() => navigate('/add')}
+            className="pointer-events-auto absolute bottom-6 right-6 w-14 h-14 bg-white text-emerald-600 rounded-full border border-card-border hover:bg-pill-green-bg hover:border-pill-green-border active:scale-95 transition-all flex items-center justify-center shadow-sm"
+          >
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </button>
+        </div>
+      </div>
 
       {/* Detail Modal */}
       {selectedParcel && !showFeedback && (

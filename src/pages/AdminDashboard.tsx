@@ -624,41 +624,45 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Bottom bar: select mode action OR FAB */}
+      {/* Bottom bar: select mode action OR FAB — aliniate la coloana centrată */}
       {selectMode && selectedIds.size > 0 ? (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-card-border px-4 py-4 z-20 safe-area-bottom space-y-2">
-          <button
-            onClick={() => setShowTransferPicker(true)}
-            className="w-full py-3.5 bg-pill-green-bg text-emerald-800 text-base font-bold rounded-full border border-pill-green-border hover:bg-emerald-100 active:bg-emerald-200 transition-colors"
-          >
-            Atribuie {selectedIds.size} colete unui șofer
-          </button>
-          <button
-            onClick={() => setShowBulkDeliverConfirm(true)}
-            className="w-full py-3 bg-amber-50 text-amber-800 text-base font-bold rounded-full border border-amber-300 hover:bg-amber-100 active:bg-amber-200 transition-colors"
-          >
-            Marchează {selectedIds.size} ca {collectionsMode ? 'colectate' : 'livrate'}
-          </button>
+        <div className="fixed inset-x-0 bottom-0 z-20 pointer-events-none">
+          <div className="max-w-lg mx-auto pointer-events-auto bg-white border-t border-card-border px-4 py-4 safe-area-bottom space-y-2">
+            <button
+              onClick={() => setShowTransferPicker(true)}
+              className="w-full py-3.5 bg-pill-green-bg text-emerald-800 text-base font-bold rounded-full border border-pill-green-border hover:bg-emerald-100 active:bg-emerald-200 transition-colors"
+            >
+              Atribuie {selectedIds.size} colete unui șofer
+            </button>
+            <button
+              onClick={() => setShowBulkDeliverConfirm(true)}
+              className="w-full py-3 bg-amber-50 text-amber-800 text-base font-bold rounded-full border border-amber-300 hover:bg-amber-100 active:bg-amber-200 transition-colors"
+            >
+              Marchează {selectedIds.size} ca {collectionsMode ? 'colectate' : 'livrate'}
+            </button>
+          </div>
         </div>
       ) : !selectMode && (
-        <>
-          {hasCollections && (
+        <div className="fixed inset-x-0 bottom-0 z-20 pointer-events-none">
+          <div className="relative max-w-lg mx-auto">
+            {hasCollections && (
+              <button
+                onClick={() => navigate('/add-collection')}
+                className="pointer-events-auto absolute bottom-6 left-6 w-14 h-14 bg-purple-50 text-purple-600 rounded-full border border-purple-300 hover:bg-purple-100 active:scale-95 transition-all flex items-center justify-center shadow-sm text-xl font-extrabold"
+              >
+                C
+              </button>
+            )}
             <button
-              onClick={() => navigate('/add-collection')}
-              className="fixed bottom-6 left-6 w-14 h-14 bg-purple-50 text-purple-600 rounded-full border border-purple-300 hover:bg-purple-100 active:scale-95 transition-all flex items-center justify-center z-20 shadow-sm text-xl font-extrabold"
+              onClick={() => navigate('/add')}
+              className="pointer-events-auto absolute bottom-6 right-6 w-14 h-14 bg-white text-emerald-600 rounded-full border border-card-border hover:bg-pill-green-bg hover:border-pill-green-border active:scale-95 transition-all flex items-center justify-center shadow-sm"
             >
-              C
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
             </button>
-          )}
-          <button
-            onClick={() => navigate('/add')}
-            className="fixed bottom-6 right-6 w-14 h-14 bg-white text-emerald-600 rounded-full border border-card-border hover:bg-pill-green-bg hover:border-pill-green-border active:scale-95 transition-all flex items-center justify-center z-20 shadow-sm"
-          >
-            <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-          </button>
-        </>
+          </div>
+        </div>
       )}
 
       {/* Bulk Deliver Confirm Modal */}

@@ -101,30 +101,32 @@ export default function AddParcel() {
   if (isAdmin && !adminSelectedDriver) {
     return (
       <div className="min-h-screen bg-soft-bg flex flex-col">
-        <div className="bg-white border-b border-card-border px-4 py-3 flex items-center gap-3">
-          <button
-            onClick={() => navigate('/')}
-            className="w-9 h-9 flex items-center justify-center rounded-full border border-card-border text-slate-400 hover:text-slate-700 hover:bg-gray-50 transition-colors"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        <div className="bg-white border-b border-card-border">
+          <div className="max-w-lg mx-auto w-full px-4 py-3 flex items-center gap-3">
+            <button
+              onClick={() => navigate('/')}
+              className="w-9 h-9 flex items-center justify-center rounded-full border border-card-border text-slate-400 hover:text-slate-700 hover:bg-gray-50 transition-colors"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </button>
-          <h1 className="text-lg font-semibold text-slate-800">
-            Atribuie coletul unui șofer
-          </h1>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+            <h1 className="text-lg font-semibold text-slate-800">
+              Atribuie coletul unui șofer
+            </h1>
+          </div>
         </div>
-        <div className="flex-1 p-4 space-y-3">
+        <div className="flex-1 w-full max-w-lg mx-auto p-4 space-y-3">
           <p className="text-slate-400 mb-4">
             Selectează șoferul căruia îi atribui coletul:
           </p>

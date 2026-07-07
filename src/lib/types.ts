@@ -23,6 +23,7 @@ export interface DriverRouteRange {
 export interface ContactDetails {
   name: string
   phone: string
+  phone2?: string   // numar de rezerva (optional) — unii clienti dau 2 numere
   address: string
 }
 

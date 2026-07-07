@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
 import type { ContactDetails } from '../../lib/types'
 import type { DestinationCode } from '../../lib/utils'
-import { calculatePrice, getCurrency, formatPrice, PHONE_PREFIX, normalizePhone } from '../../lib/utils'
+import { calculatePrice, getCurrency, formatPrice, PHONE_PREFIX, normalizePhone, cleanPhone2 } from '../../lib/utils'
 import { useContacts } from '../../hooks/useContacts'
 import { useClientByPhoneDigits } from '../../hooks/useClients'
 import Button from '../ui/Button'
-import PhoneInput from '../ui/PhoneInput'
+import MultiPhoneInput from '../ui/MultiPhoneInput'
 
 interface StepDetailsProps {
   originCode: DestinationCode
@@ -158,12 +158,17 @@ export default function StepDetails({
     receiver.address.trim() &&
     weight > 0
 
+  // Scoate numarul de rezerva daca a ramas gol (doar prefix / fara cifre)
+  function cleanContact(c: ContactDetails): ContactDetails {
+    return { ...c, phone2: cleanPhone2(c.phone2) }
+  }
+
   function handleSubmit() {
     if (!isValid) return
     const parsedMdl = mdlAmount ? parseFloat(mdlAmount) : undefined
     onComplete({
-      sender_details: sender,
-      receiver_details: receiver,
+      sender_details: cleanContact(sender),
+      receiver_details: cleanContact(receiver),
       content_description: contentDesc,
       nr_bucati: nrBucati,
       payment_status: paymentStatus,
@@ -228,11 +233,13 @@ export default function StepDetails({
           inputCls={inputCls}
         />
         <div>
-          <PhoneInput
+          <MultiPhoneInput
             placeholder="Telefon destinatar *"
             prefix={PHONE_PREFIX[deliveryDestination]}
-            value={receiver.phone}
-            onChange={(next) => setReceiver({ ...receiver, phone: next })}
+            phone={receiver.phone}
+            phone2={receiver.phone2}
+            onPhoneChange={(next) => setReceiver({ ...receiver, phone: next })}
+            onPhone2Change={(next) => setReceiver({ ...receiver, phone2: next })}
           />
           <p className="text-[11px] text-slate-400 mt-0.5 ml-1">fără 0 la început</p>
         </div>
@@ -265,11 +272,13 @@ export default function StepDetails({
           inputCls={inputCls}
         />
         <div>
-          <PhoneInput
+          <MultiPhoneInput
             placeholder="Telefon expeditor *"
             prefix={PHONE_PREFIX[originCode]}
-            value={sender.phone}
-            onChange={(next) => setSender({ ...sender, phone: next })}
+            phone={sender.phone}
+            phone2={sender.phone2}
+            onPhoneChange={(next) => setSender({ ...sender, phone: next })}
+            onPhone2Change={(next) => setSender({ ...sender, phone2: next })}
           />
           <p className="text-[11px] text-slate-400 mt-0.5 ml-1">fără 0 la început</p>
         </div>

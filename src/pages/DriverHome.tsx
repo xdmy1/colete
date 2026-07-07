@@ -7,13 +7,15 @@ import {
   useMarkDelivered,
   useUpdateParcel,
 } from '../hooks/useParcels'
-import { formatPrice, getDestLabel, calculatePrice, matchesAddedDateTime, normalizePhone } from '../lib/utils'
+import { formatPrice, getDestLabel, calculatePrice, matchesAddedDateTime, normalizePhone, cleanPhone2 } from '../lib/utils'
 import { exportCashReportToExcel } from '../lib/exportExcel'
 import { backdropClose } from '../lib/backdropClose'
 import type { Parcel } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
 import AddPhotos from '../components/AddPhotos'
+import BackupPhone from '../components/ui/BackupPhone'
+import BackupPhoneEdit from '../components/ui/BackupPhoneEdit'
 
 // ── Phone icon SVG ──
 function PhoneIcon({ className = 'w-5 h-5' }: { className?: string }) {
@@ -765,8 +767,8 @@ function ParcelDetailModal({
   onClose: () => void
   onEdit: () => void
   onSave: (updates: {
-    sender_details?: { name: string; phone: string; address: string }
-    receiver_details?: { name: string; phone: string; address: string }
+    sender_details?: { name: string; phone: string; phone2?: string; address: string }
+    receiver_details?: { name: string; phone: string; phone2?: string; address: string }
     content_description?: string | null
     nr_bucati?: number
     weight?: number
@@ -779,9 +781,11 @@ function ParcelDetailModal({
 }) {
   const [senderName, setSenderName] = useState(parcel.sender_details.name)
   const [senderPhone, setSenderPhone] = useState(parcel.sender_details.phone)
+  const [senderPhone2, setSenderPhone2] = useState(parcel.sender_details.phone2)
   const [senderAddress, setSenderAddress] = useState(parcel.sender_details.address)
   const [receiverName, setReceiverName] = useState(parcel.receiver_details.name)
   const [receiverPhone, setReceiverPhone] = useState(parcel.receiver_details.phone)
+  const [receiverPhone2, setReceiverPhone2] = useState(parcel.receiver_details.phone2)
   const [receiverAddress, setReceiverAddress] = useState(parcel.receiver_details.address)
   const [contentDesc, setContentDesc] = useState(parcel.content_description || '')
   const [nrBucati, setNrBucati] = useState(parcel.nr_bucati)
@@ -797,8 +801,8 @@ function ParcelDetailModal({
 
   function handleSave() {
     onSave({
-      sender_details: { name: senderName, phone: senderPhone, address: senderAddress },
-      receiver_details: { name: receiverName, phone: receiverPhone, address: receiverAddress },
+      sender_details: { name: senderName, phone: senderPhone, phone2: cleanPhone2(senderPhone2), address: senderAddress },
+      receiver_details: { name: receiverName, phone: receiverPhone, phone2: cleanPhone2(receiverPhone2), address: receiverAddress },
       content_description: contentDesc || null,
       nr_bucati: nrBucati,
       weight,
@@ -853,11 +857,13 @@ function ParcelDetailModal({
               <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Expeditor</h3>
               <input className={inputCls} value={senderName} onChange={(e) => setSenderName(e.target.value)} placeholder="Nume expeditor" />
               <input className={inputCls} value={senderPhone} onChange={(e) => setSenderPhone(e.target.value)} placeholder="Telefon expeditor" />
+              <BackupPhoneEdit value={senderPhone2} onChange={setSenderPhone2} inputCls={inputCls} placeholder="Telefon rezervă expeditor" />
               <input className={inputCls} value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} placeholder="Adresă expeditor" />
 
               <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-1">Destinatar</h3>
               <input className={inputCls} value={receiverName} onChange={(e) => setReceiverName(e.target.value)} placeholder="Nume destinatar" />
               <input className={inputCls} value={receiverPhone} onChange={(e) => setReceiverPhone(e.target.value)} placeholder="Telefon destinatar" />
+              <BackupPhoneEdit value={receiverPhone2} onChange={setReceiverPhone2} inputCls={inputCls} placeholder="Telefon rezervă destinatar" />
               <input className={inputCls} value={receiverAddress} onChange={(e) => setReceiverAddress(e.target.value)} placeholder="Adresă destinatar" />
 
               <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-1">Detalii colet</h3>
@@ -951,6 +957,7 @@ function ParcelDetailModal({
                     WhatsApp
                   </a>
                 </div>
+                <BackupPhone phone={parcel.receiver_details.phone2} tone="emerald" />
               </div>
 
               {/* Expeditor */}
@@ -979,6 +986,7 @@ function ParcelDetailModal({
                     WhatsApp
                   </a>
                 </div>
+                <BackupPhone phone={parcel.sender_details.phone2} tone="blue" />
               </div>
 
               {/* Details grid */}

@@ -367,8 +367,8 @@ export function useUpdateParcel() {
     }: {
       parcel: Parcel
       updates: {
-        sender_details?: { name: string; phone: string; address: string }
-        receiver_details?: { name: string; phone: string; address: string }
+        sender_details?: { name: string; phone: string; phone2?: string; address: string }
+        receiver_details?: { name: string; phone: string; phone2?: string; address: string }
         content_description?: string | null
         nr_bucati?: number
         weight?: number

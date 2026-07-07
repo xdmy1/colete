@@ -127,6 +127,13 @@ export function normalizePhone(phone: string | null | undefined): string {
   return (phone ?? '').replace(/\D+/g, '')
 }
 
+// Numarul de rezerva (al doilea telefon): pastreaza-l doar daca are cifre,
+// altfel intoarce undefined ca sa nu salvam un prefix gol (ex: "+44 ").
+export function cleanPhone2(phone2: string | undefined): string | undefined {
+  if (phone2 === undefined) return undefined
+  return normalizePhone(phone2).length > 0 ? phone2.trim() : undefined
+}
+
 export function matchesAddedDateTime(createdAt: string, dateFilter: string, timeFilter: string): boolean {
   if (!dateFilter && !timeFilter) return true
   const d = new Date(createdAt)

@@ -18,13 +18,15 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useAuth } from '../hooks/useAuth'
 import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel, useMarkAllDelivered, useUpdateDriver } from '../hooks/useParcels'
-import { formatPrice, getDestLabel, ROUTES, calculatePrice, matchesAddedDateTime, normalizePhone } from '../lib/utils'
+import { formatPrice, getDestLabel, ROUTES, calculatePrice, matchesAddedDateTime, normalizePhone, cleanPhone2 } from '../lib/utils'
 import { exportParcelsToExcel, exportCashReportToExcel } from '../lib/exportExcel'
 import { backdropClose } from '../lib/backdropClose'
 import type { Parcel, Profile } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
 import AddPhotos from '../components/AddPhotos'
+import BackupPhone from '../components/ui/BackupPhone'
+import BackupPhoneEdit from '../components/ui/BackupPhoneEdit'
 
 function DragIcon() {
   return (
@@ -1069,8 +1071,8 @@ function AdminParcelModal({
   onClose: () => void
   onEdit: () => void
   onSave: (updates: {
-    sender_details?: { name: string; phone: string; address: string }
-    receiver_details?: { name: string; phone: string; address: string }
+    sender_details?: { name: string; phone: string; phone2?: string; address: string }
+    receiver_details?: { name: string; phone: string; phone2?: string; address: string }
     content_description?: string | null
     nr_bucati?: number
     weight?: number
@@ -1084,9 +1086,11 @@ function AdminParcelModal({
 }) {
   const [senderName, setSenderName] = useState(parcel.sender_details.name)
   const [senderPhone, setSenderPhone] = useState(parcel.sender_details.phone)
+  const [senderPhone2, setSenderPhone2] = useState(parcel.sender_details.phone2)
   const [senderAddress, setSenderAddress] = useState(parcel.sender_details.address)
   const [receiverName, setReceiverName] = useState(parcel.receiver_details.name)
   const [receiverPhone, setReceiverPhone] = useState(parcel.receiver_details.phone)
+  const [receiverPhone2, setReceiverPhone2] = useState(parcel.receiver_details.phone2)
   const [receiverAddress, setReceiverAddress] = useState(parcel.receiver_details.address)
   const [contentDesc, setContentDesc] = useState(parcel.content_description || '')
   const [nrBucati, setNrBucati] = useState(parcel.nr_bucati)
@@ -1102,13 +1106,13 @@ function AdminParcelModal({
   function handleSave() {
     if (isCollection) {
       onSave({
-        sender_details: { name: '', phone: senderPhone, address: senderAddress },
+        sender_details: { name: '', phone: senderPhone, phone2: cleanPhone2(senderPhone2), address: senderAddress },
         content_description: contentDesc || null,
       }, newPhotos)
     } else {
       onSave({
-        sender_details: { name: senderName, phone: senderPhone, address: senderAddress },
-        receiver_details: { name: receiverName, phone: receiverPhone, address: receiverAddress },
+        sender_details: { name: senderName, phone: senderPhone, phone2: cleanPhone2(senderPhone2), address: senderAddress },
+        receiver_details: { name: receiverName, phone: receiverPhone, phone2: cleanPhone2(receiverPhone2), address: receiverAddress },
         content_description: contentDesc || null,
         nr_bucati: nrBucati,
         weight,
@@ -1196,6 +1200,7 @@ function AdminParcelModal({
                 <>
                   <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Contact</h3>
                   <input className={inputCls} value={senderPhone} onChange={(e) => setSenderPhone(e.target.value)} placeholder="Telefon" />
+                  <BackupPhoneEdit value={senderPhone2} onChange={setSenderPhone2} inputCls={inputCls} placeholder="Telefon rezervă" />
                   <input className={inputCls} value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} placeholder="Adresa" />
                   <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-1">Nota</h3>
                   <textarea className={`${inputCls} resize-none`} rows={3} value={contentDesc} onChange={(e) => setContentDesc(e.target.value)} placeholder="Nota" />
@@ -1205,11 +1210,13 @@ function AdminParcelModal({
                   <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Expeditor</h3>
               <input className={inputCls} value={senderName} onChange={(e) => setSenderName(e.target.value)} placeholder="Nume expeditor" />
               <input className={inputCls} value={senderPhone} onChange={(e) => setSenderPhone(e.target.value)} placeholder="Telefon expeditor" />
+              <BackupPhoneEdit value={senderPhone2} onChange={setSenderPhone2} inputCls={inputCls} placeholder="Telefon rezervă expeditor" />
               <input className={inputCls} value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} placeholder="Adresă expeditor" />
 
               <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-1">Destinatar</h3>
               <input className={inputCls} value={receiverName} onChange={(e) => setReceiverName(e.target.value)} placeholder="Nume destinatar" />
               <input className={inputCls} value={receiverPhone} onChange={(e) => setReceiverPhone(e.target.value)} placeholder="Telefon destinatar" />
+              <BackupPhoneEdit value={receiverPhone2} onChange={setReceiverPhone2} inputCls={inputCls} placeholder="Telefon rezervă destinatar" />
               <input className={inputCls} value={receiverAddress} onChange={(e) => setReceiverAddress(e.target.value)} placeholder="Adresă destinatar" />
 
               <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-1">Detalii colet</h3>
@@ -1276,6 +1283,7 @@ function AdminParcelModal({
                     <a href={`tel:${parcel.sender_details.phone}`} className="text-base font-bold text-slate-800 block">
                       {parcel.sender_details.phone}
                     </a>
+                    <BackupPhone phone={parcel.sender_details.phone2} tone="emerald" />
                     <p className="text-sm text-slate-500">{parcel.sender_details.address}</p>
                   </div>
                   {parcel.content_description && (
@@ -1304,6 +1312,7 @@ function AdminParcelModal({
                         WhatsApp
                       </a>
                     </div>
+                    <BackupPhone phone={parcel.sender_details.phone2} tone="blue" />
                     <p className="text-xs text-slate-400">{parcel.sender_details.address}</p>
                   </div>
 
@@ -1324,6 +1333,7 @@ function AdminParcelModal({
                         WhatsApp
                       </a>
                     </div>
+                    <BackupPhone phone={parcel.receiver_details.phone2} tone="emerald" />
                     <p className="text-xs text-slate-400">{parcel.receiver_details.address}</p>
                   </div>
 

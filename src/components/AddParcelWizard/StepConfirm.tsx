@@ -41,8 +41,14 @@ export default function StepConfirm({
         <SummaryRow label="Rută" value={`${getDestLabel(data.origin_code)} → ${getDestLabel(data.delivery_destination)}`} />
         <SummaryRow label="Expeditor" value={data.sender_details.name} />
         <SummaryRow label="Tel. Expeditor" value={data.sender_details.phone} />
+        {data.sender_details.phone2?.trim() && (
+          <SummaryRow label="Tel. rezervă" value={data.sender_details.phone2} />
+        )}
         <SummaryRow label="Destinatar" value={data.receiver_details.name} />
         <SummaryRow label="Tel. Destinatar" value={data.receiver_details.phone} />
+        {data.receiver_details.phone2?.trim() && (
+          <SummaryRow label="Tel. rezervă" value={data.receiver_details.phone2} />
+        )}
         <SummaryRow label="Adresa" value={data.receiver_details.address} />
         {data.content_description && (
           <SummaryRow label="Conținut" value={data.content_description} />

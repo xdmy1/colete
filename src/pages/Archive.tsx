@@ -406,6 +406,9 @@ function ArchiveParcelModal({
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expeditor</h3>
                 <p className="text-base font-bold text-slate-800">{parcel.sender_details.name}</p>
                 <p className="text-xs text-slate-400">{parcel.sender_details.phone}</p>
+                {parcel.sender_details.phone2?.trim() && (
+                  <p className="text-xs text-slate-400">{parcel.sender_details.phone2} <span className="text-slate-300">· rezervă</span></p>
+                )}
                 <p className="text-xs text-slate-400">{parcel.sender_details.address}</p>
               </div>
 
@@ -413,6 +416,9 @@ function ArchiveParcelModal({
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Destinatar</h3>
                 <p className="text-base font-bold text-slate-800">{parcel.receiver_details.name}</p>
                 <p className="text-xs text-slate-400">{parcel.receiver_details.phone}</p>
+                {parcel.receiver_details.phone2?.trim() && (
+                  <p className="text-xs text-slate-400">{parcel.receiver_details.phone2} <span className="text-slate-300">· rezervă</span></p>
+                )}
                 <p className="text-xs text-slate-400">{parcel.receiver_details.address}</p>
               </div>
 

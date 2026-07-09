@@ -377,7 +377,7 @@ export default function DriverHome() {
 
       {/* FAB buttons — aliniate la coloana centrată */}
       <div className="fixed inset-x-0 bottom-0 z-20 pointer-events-none">
-        <div className="relative max-w-lg mx-auto">
+        <div className="relative max-w-lg lg:max-w-none mx-auto">
           {hasCollections && (
             <button
               onClick={() => navigate('/add-collection')}

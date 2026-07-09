@@ -629,7 +629,7 @@ export default function AdminDashboard() {
       {/* Bottom bar: select mode action OR FAB — aliniate la coloana centrată */}
       {selectMode && selectedIds.size > 0 ? (
         <div className="fixed inset-x-0 bottom-0 z-20 pointer-events-none">
-          <div className="max-w-lg mx-auto pointer-events-auto bg-white border-t border-card-border px-4 py-4 safe-area-bottom space-y-2">
+          <div className="max-w-lg lg:max-w-none mx-auto pointer-events-auto bg-white border-t border-card-border px-4 py-4 safe-area-bottom space-y-2">
             <button
               onClick={() => setShowTransferPicker(true)}
               className="w-full py-3.5 bg-pill-green-bg text-emerald-800 text-base font-bold rounded-full border border-pill-green-border hover:bg-emerald-100 active:bg-emerald-200 transition-colors"
@@ -646,7 +646,7 @@ export default function AdminDashboard() {
         </div>
       ) : !selectMode && (
         <div className="fixed inset-x-0 bottom-0 z-20 pointer-events-none">
-          <div className="relative max-w-lg mx-auto">
+          <div className="relative max-w-lg lg:max-w-none mx-auto">
             {hasCollections && (
               <button
                 onClick={() => navigate('/add-collection')}

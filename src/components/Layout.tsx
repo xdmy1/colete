@@ -18,7 +18,7 @@ export default function Layout({
       {/* Header — bara albă pe toată lățimea, conținut centrat pe o coloană */}
       {title && (
         <header className="bg-white border-b border-card-border sticky top-0 z-30">
-          <div className="max-w-lg mx-auto w-full px-4 py-3.5 flex items-center gap-3">
+          <div className="max-w-lg lg:max-w-none mx-auto w-full px-4 py-3.5 flex items-center gap-3">
             {onBack && (
               <button
                 onClick={onBack}
@@ -50,7 +50,7 @@ export default function Layout({
       )}
 
       {/* Content — coloană centrată (pe telefon = lățime completă) */}
-      <main className="flex-1 w-full max-w-lg mx-auto p-4">{children}</main>
+      <main className="flex-1 w-full max-w-lg lg:max-w-none mx-auto p-4">{children}</main>
     </div>
   )
 }

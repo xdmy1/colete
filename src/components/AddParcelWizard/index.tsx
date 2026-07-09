@@ -171,7 +171,7 @@ export default function AddParcelWizard({
     <div className="flex flex-col min-h-screen bg-soft-bg">
       {/* Progress bar */}
       <div className="bg-white border-b border-card-border sticky top-0 z-30">
-        <div className="max-w-lg mx-auto w-full px-4 py-3">
+        <div className="max-w-lg lg:max-w-none mx-auto w-full px-4 py-3">
         {(() => { const { label, range } = weekIdParts(getCurrentWeekId()); return (
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-bold text-slate-700">{label}</span>
@@ -223,7 +223,7 @@ export default function AddParcelWizard({
       </div>
 
       {/* Step content */}
-      <div className="flex-1 w-full max-w-lg mx-auto p-4">
+      <div className="flex-1 w-full max-w-lg lg:max-w-none mx-auto p-4">
         {step === 1 && (
           <StepDestination onSelect={handleDestinationSelect} routes={routes} />
         )}

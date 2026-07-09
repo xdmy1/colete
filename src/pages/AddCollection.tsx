@@ -61,7 +61,7 @@ export default function AddCollection() {
     <div className="min-h-screen bg-soft-bg flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-card-border">
-        <div className="max-w-lg mx-auto w-full px-4 py-3 flex items-center gap-3">
+        <div className="max-w-lg lg:max-w-none mx-auto w-full px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/')}
             className="w-9 h-9 flex items-center justify-center rounded-full border border-card-border text-slate-400 hover:text-slate-700 hover:bg-gray-50 transition-colors"
@@ -74,7 +74,7 @@ export default function AddCollection() {
         </div>
       </div>
 
-      <div className="flex-1 w-full max-w-lg mx-auto p-4 space-y-5">
+      <div className="flex-1 w-full max-w-lg lg:max-w-none mx-auto p-4 space-y-5">
         {/* Country selector */}
         <div>
           <label className="text-sm font-semibold text-slate-600 uppercase tracking-wide block mb-2">

@@ -5,12 +5,11 @@ import {
   useClients,
   useClientAddresses,
   useClientParcels,
+  useClientParcelStats,
   useUpdateClient,
   useDeleteClient,
   useDeleteClientAddress,
 } from '../hooks/useClients'
-import { useAllParcels } from '../hooks/useParcels'
-import { useAuth } from '../hooks/useAuth'
 import { formatPrice, getDestLabel, normalizePhone } from '../lib/utils'
 import { backdropClose } from '../lib/backdropClose'
 import type { Client, ClientAddress, Parcel } from '../lib/types'
@@ -58,27 +57,25 @@ function formatStats(s: ClientStats): string {
 
 export default function Clients() {
   const navigate = useNavigate()
-  const { profile } = useAuth()
   const { data: clients = [], isLoading: loadingClients } = useClients()
   const { data: addresses = [] } = useClientAddresses()
-  const { data: allParcels = [] } = useAllParcels(profile?.excluded_destinations ?? null)
+  // Stats all-time (inclusiv arhivate) — altfel lista arata 0 colete dupa arhivare.
+  const { data: statsParcels = [] } = useClientParcelStats()
 
   const [search, setSearch] = useState('')
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
 
-  // Mapa client_id -> parcels (toate, inclusiv arhivate — pentru stats)
-  // useAllParcels e doar nearhivate. Pentru stats globale tragem o data direct.
-  // Aici folosim doar pentru lista; stats per client (inclusiv arhivate) le facem in modal.
+  // Mapa client_id -> parcels ALL-TIME (inclusiv arhivate) pentru numaratoare + sume.
   const parcelsByClient = useMemo(() => {
     const m = new Map<string, Parcel[]>()
-    for (const p of allParcels) {
+    for (const p of statsParcels) {
       if (!p.client_id) continue
       const list = m.get(p.client_id) || []
-      list.push(p)
+      list.push(p as Parcel)
       m.set(p.client_id, list)
     }
     return m
-  }, [allParcels])
+  }, [statsParcels])
 
   const addressesByClient = useMemo(() => {
     const m = new Map<string, ClientAddress[]>()

@@ -71,6 +71,38 @@ export function useClientParcels(clientId: string | null | undefined) {
   })
 }
 
+// Stats all-time per client (INCLUSIV arhivate). Lista de clienti folosea
+// useAllParcels (doar nearhivate) => arata "0 colete" pentru orice client ale
+// carui colete au fost deja arhivate (dupa reset-ul de duminica = practic toti).
+// Adminul poate citi coletele arhivate (RLS is_admin). Tragem doar campurile
+// necesare pentru numaratoare + sume.
+export function useClientParcelStats() {
+  return useQuery({
+    queryKey: ['client-parcel-stats'],
+    queryFn: async () => {
+      const rows: Pick<
+        Parcel,
+        'client_id' | 'record_type' | 'price' | 'currency' | 'paid_mdl_amount' | 'created_at'
+      >[] = []
+      const page = 1000
+      let from = 0
+      for (;;) {
+        const { data, error } = await supabase
+          .from('parcels')
+          .select('client_id,record_type,price,currency,paid_mdl_amount,created_at')
+          .not('client_id', 'is', null)
+          .range(from, from + page - 1)
+        if (error) throw error
+        rows.push(...((data as unknown) as typeof rows))
+        if (!data || data.length < page) break
+        from += page
+      }
+      return rows
+    },
+    staleTime: 1000 * 30,
+  })
+}
+
 // Cauta client dupa cifrele telefonului (autocomplete in wizard)
 export function useClientByPhoneDigits(phoneDigits: string) {
   return useQuery({

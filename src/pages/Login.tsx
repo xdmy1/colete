@@ -1,39 +1,47 @@
 import { useState, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
 
+const PIN_LENGTH = 4
+
 export default function Login() {
   const { loginWithPin } = useAuth()
   const [pin, setPin] = useState('')
   const pinRef = useRef('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const loadingRef = useRef(false)
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const currentPin = pinRef.current
-    if (currentPin.length < 4) {
-      setError('Introdu minimum 4 cifre')
-      return
-    }
+  async function submitPin(currentPin: string) {
+    if (loadingRef.current || currentPin.length !== PIN_LENGTH) return
 
+    loadingRef.current = true
     setLoading(true)
     setError(null)
     const { error: loginError } = await loginWithPin(currentPin)
     if (loginError) {
       setError(loginError)
+      pinRef.current = ''
+      setPin('')
     }
+    loadingRef.current = false
     setLoading(false)
   }
 
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    void submitPin(pinRef.current)
+  }
+
   function handleDigit(digit: string) {
-    if (pinRef.current.length < 6) {
-      const next = pinRef.current + digit
-      pinRef.current = next
-      setPin(next)
-    }
+    if (loadingRef.current || pinRef.current.length >= PIN_LENGTH) return
+    const next = pinRef.current + digit
+    pinRef.current = next
+    setPin(next)
+    if (next.length === PIN_LENGTH) void submitPin(next)
   }
 
   function handleDelete() {
+    if (loadingRef.current) return
     const next = pinRef.current.slice(0, -1)
     pinRef.current = next
     setPin(next)
@@ -56,7 +64,7 @@ export default function Login() {
         {/* PIN display */}
         <form onSubmit={handleSubmit}>
           <div className="flex justify-center gap-3 mb-6">
-            {[0, 1, 2, 3].map((i) => (
+            {Array.from({ length: PIN_LENGTH }, (_, i) => i).map((i) => (
               <div
                 key={i}
                 className={`w-12 h-12 rounded-xl border flex items-center justify-center text-xl font-bold transition-all ${
@@ -117,7 +125,7 @@ export default function Login() {
 
           <button
             type="submit"
-            disabled={pin.length < 4 || loading}
+            disabled={pin.length < PIN_LENGTH || loading}
             className="w-full py-3.5 rounded-full bg-pill-green-bg text-emerald-800 text-base font-bold border border-pill-green-border hover:bg-emerald-100 active:bg-emerald-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             {loading ? 'Se autentifică...' : 'Intră'}

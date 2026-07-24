@@ -55,6 +55,39 @@ export function buildHumanId(
   }
 }
 
+// ── Sortare colete: grupat pe SERIE (rută), apoi crescător după număr ──
+// Fiecare serie își are propria numerotare (B=Belgia, OL=Olanda, D=Germania,
+// număr simplu=Anglia/Moldova) și numerele se suprapun între serii (B2 și OL2 au
+// ambele numeric_id=2). Grupăm întâi pe seria dată de țara străină din rută (prefixul
+// vizibil al human_id), apoi ordonăm crescător după numeric_id în interiorul seriei:
+// B2, B3, B100, B102 / OL1, OL2 ...
+// NU folosim route_order aici: la coletele reatribuite de la alt șofer route_order
+// rămâne 0 / valoarea veche, ceea ce amestecă lista.
+const SERIES_ORDER: DestinationCode[] = ['UK', 'BE', 'NL', 'DE', 'MD']
+
+type SortableParcel = {
+  origin_code: string
+  delivery_destination: string
+  numeric_id: number
+  created_at: string
+}
+
+export function parcelSeries(p: { origin_code: string; delivery_destination: string }): string {
+  return p.delivery_destination !== 'MD' ? p.delivery_destination : p.origin_code
+}
+
+export function compareBySeriesThenNumber(a: SortableParcel, b: SortableParcel): number {
+  const sa = parcelSeries(a)
+  const sb = parcelSeries(b)
+  if (sa !== sb) {
+    const ra = SERIES_ORDER.indexOf(sa as DestinationCode)
+    const rb = SERIES_ORDER.indexOf(sb as DestinationCode)
+    return (ra === -1 ? 99 : ra) - (rb === -1 ? 99 : rb)
+  }
+  if (a.numeric_id !== b.numeric_id) return a.numeric_id - b.numeric_id
+  return a.created_at.localeCompare(b.created_at)
+}
+
 // ── Price calculation ──
 // UK routes: £1.5/kg  |  altele: €1.5/kg
 

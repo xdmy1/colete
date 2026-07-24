@@ -18,7 +18,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useAuth } from '../hooks/useAuth'
 import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel, useMarkAllDelivered, useUpdateDriver } from '../hooks/useParcels'
-import { formatPrice, getDestLabel, ROUTES, calculatePrice, matchesAddedDateTime, normalizePhone, cleanPhone2 } from '../lib/utils'
+import { formatPrice, getDestLabel, ROUTES, calculatePrice, matchesAddedDateTime, normalizePhone, cleanPhone2, compareBySeriesThenNumber } from '../lib/utils'
 import { exportParcelsToExcel, exportCashReportToExcel } from '../lib/exportExcel'
 import { backdropClose } from '../lib/backdropClose'
 import type { Parcel, Profile } from '../lib/types'
@@ -196,7 +196,13 @@ export default function AdminDashboard() {
       )
     }
 
-    return [...result].sort((a, b) => a.route_order - b.route_order || a.numeric_id - b.numeric_id)
+    // La un singur șofer selectat păstrăm route_order (ordinea manuală drag & drop a
+    // traseului). La „Toți șoferii" (overview cu colete reatribuite, unde route_order
+    // e amestecat) grupăm pe serie și ordonăm crescător după număr.
+    if (driverFilter !== 'all') {
+      return [...result].sort((a, b) => a.route_order - b.route_order || a.numeric_id - b.numeric_id)
+    }
+    return [...result].sort(compareBySeriesThenNumber)
   }, [parcels, driverFilter, routeFilter, statusFilter, paymentFilter, assignedOnly, collectionsMode, dateFilter, timeFilter, search])
 
   const activeParcels = filteredParcels.filter((p) => p.status === 'pending')

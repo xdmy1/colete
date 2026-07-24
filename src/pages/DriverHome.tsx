@@ -26,6 +26,31 @@ function PhoneIcon({ className = 'w-5 h-5' }: { className?: string }) {
   )
 }
 
+// Sortare: grupat pe SERIE (rută), apoi crescător după NUMĂRUL coletului.
+// NU folosim route_order: la coletele reatribuite de la alt șofer, route_order rămâne
+// 0 sau valoarea veche, ceea ce amestecă lista (OL1, B100, B2, OL2...).
+// Fiecare serie își are propria numerotare (B pt Belgia, OL pt Olanda, D pt Germania,
+// număr simplu pt Anglia), iar numerele se suprapun între serii — de aceea grupăm întâi
+// pe seria dată de țara străină din rută (prefixul vizibil al human_id), apoi ordonăm
+// crescător după numeric_id în interiorul seriei: B2, B3, B100, B102 / OL1, OL2 ...
+const SERIES_ORDER = ['UK', 'BE', 'NL', 'DE', 'MD']
+
+function seriesOf(p: Parcel): string {
+  return p.delivery_destination !== 'MD' ? p.delivery_destination : p.origin_code
+}
+
+function byNumber(a: Parcel, b: Parcel) {
+  const sa = seriesOf(a)
+  const sb = seriesOf(b)
+  if (sa !== sb) {
+    const ra = SERIES_ORDER.indexOf(sa)
+    const rb = SERIES_ORDER.indexOf(sb)
+    return (ra === -1 ? 99 : ra) - (rb === -1 ? 99 : rb)
+  }
+  if (a.numeric_id !== b.numeric_id) return a.numeric_id - b.numeric_id
+  return a.created_at.localeCompare(b.created_at)
+}
+
 export default function DriverHome() {
   const { profile, logout } = useAuth()
   const navigate = useNavigate()
@@ -52,8 +77,8 @@ export default function DriverHome() {
   const [collectionsMode, setCollectionsMode] = useState(false)
   const hasCollections = (profile?.allowed_collection_countries?.length ?? 0) > 0
 
-  const allActive = parcels?.filter((p) => p.status === 'pending' && (collectionsMode ? p.record_type === 'collection' : p.record_type !== 'collection')) || []
-  const allDelivered = parcels?.filter((p) => p.status === 'delivered' && (collectionsMode ? p.record_type === 'collection' : p.record_type !== 'collection')) || []
+  const allActive = (parcels?.filter((p) => p.status === 'pending' && (collectionsMode ? p.record_type === 'collection' : p.record_type !== 'collection')) || []).sort(byNumber)
+  const allDelivered = (parcels?.filter((p) => p.status === 'delivered' && (collectionsMode ? p.record_type === 'collection' : p.record_type !== 'collection')) || []).sort(byNumber)
 
   // Dare de seamă: toate coletele cu cash primit (COD livrat + achitat cash de expeditor)
   // Folosim hook separat ca să includă și coletele arhivate (livrate în aceeași săptămână)

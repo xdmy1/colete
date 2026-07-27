@@ -14,6 +14,7 @@ export async function exportParcelsToExcel(
 
   sheet.columns = [
     { header: 'ID',                key: 'id',            width: 10  },
+    { header: 'Rută',              key: 'route',          width: 22  },
     { header: 'Foto',              key: 'photo',          width: 14  },
     { header: 'Expeditor',         key: 'sender',         width: 24  },
     { header: 'Tel. Expeditor',    key: 'senderPhone',    width: 16  },
@@ -52,6 +53,7 @@ export async function exportParcelsToExcel(
 
     const row = sheet.addRow({
       id:           p.human_id,
+      route:        `${getDestLabel(p.origin_code)} → ${getDestLabel(p.delivery_destination)}`,
       photo:        '',
       sender:       p.sender_details.name,
       senderPhone:  p.sender_details.phone2?.trim() ? `${p.sender_details.phone} / ${p.sender_details.phone2}` : p.sender_details.phone,
@@ -91,7 +93,8 @@ export async function exportParcelsToExcel(
 
           const imageId = workbook.addImage({ buffer, extension: ext })
           sheet.addImage(imageId, {
-            tl: { col: 1, row: i + 1 },
+            // col 2 = coloana "Foto" (după ID + Rută)
+            tl: { col: 2, row: i + 1 },
             ext: { width: 90, height: 90 },
             editAs: 'oneCell',
           })

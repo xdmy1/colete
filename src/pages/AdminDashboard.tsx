@@ -54,7 +54,11 @@ export default function AdminDashboard() {
 
   // Filters
   const [driverFilter, setDriverFilter] = useState<string | 'all'>('all')
-  const [routeFilter, setRouteFilter] = useState<string | 'all'>('all')
+  // Rute selectate pentru filtrare + export. Set gol = toate rutele.
+  // Multi-select: se pot bifa mai multe rute deodată (ex: MD→BE + MD→DE) și
+  // se exportă toate într-un singur Excel.
+  const [routeFilters, setRouteFilters] = useState<Set<string>>(new Set())
+  const [routeMenuOpen, setRouteMenuOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'delivered'>('all')
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'cod' | 'transfer'>('all')
   const [dateFilter, setDateFilter] = useState('')
@@ -137,6 +141,22 @@ export default function AdminDashboard() {
     return drivers?.find((d) => d.id === driverId)?.username || 'Necunoscut'
   }
 
+  function toggleRoute(key: string) {
+    setRouteFilters((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const routeLabel =
+    routeFilters.size === 0
+      ? 'Toate rutele'
+      : routeFilters.size === 1
+        ? visibleRoutes.find((r) => `${r.origin}->${r.destination}` === [...routeFilters][0])?.label ?? '1 rută'
+        : `${routeFilters.size} rute`
+
   // Apply all filters
   const filteredParcels = useMemo(() => {
     let result = parcels || []
@@ -152,10 +172,9 @@ export default function AdminDashboard() {
       result = result.filter((p) => p.driver_id === driverFilter)
     }
 
-    if (routeFilter !== 'all') {
-      const [origin, dest] = routeFilter.split('->')
-      result = result.filter(
-        (p) => p.origin_code === origin && p.delivery_destination === dest
+    if (routeFilters.size > 0) {
+      result = result.filter((p) =>
+        routeFilters.has(`${p.origin_code}->${p.delivery_destination}`)
       )
     }
 
@@ -203,7 +222,7 @@ export default function AdminDashboard() {
       return [...result].sort((a, b) => a.route_order - b.route_order || a.numeric_id - b.numeric_id)
     }
     return [...result].sort(compareBySeriesThenNumber)
-  }, [parcels, driverFilter, routeFilter, statusFilter, paymentFilter, assignedOnly, collectionsMode, dateFilter, timeFilter, search])
+  }, [parcels, driverFilter, routeFilters, statusFilter, paymentFilter, assignedOnly, collectionsMode, dateFilter, timeFilter, search])
 
   const activeParcels = filteredParcels.filter((p) => p.status === 'pending')
   const deliveredParcels = filteredParcels.filter((p) => p.status === 'delivered')
@@ -387,18 +406,20 @@ export default function AdminDashboard() {
           })}
         </select>
 
-        <select
-          value={routeFilter}
-          onChange={(e) => setRouteFilter(e.target.value)}
-          className="px-4 py-2 rounded-full border border-card-border bg-white text-sm font-medium text-slate-600 focus:outline-none focus:ring-1 focus:ring-pill-green-border shrink-0"
+        <button
+          type="button"
+          onClick={() => setRouteMenuOpen(true)}
+          className={`px-4 py-2 rounded-full border bg-white text-sm font-medium focus:outline-none focus:ring-1 focus:ring-pill-green-border shrink-0 flex items-center gap-1.5 transition-colors ${
+            routeFilters.size > 0
+              ? 'border-blue-400 text-blue-700 bg-blue-50'
+              : 'border-card-border text-slate-600 hover:border-slate-300'
+          }`}
         >
-          <option value="all">Toate rutele</option>
-          {visibleRoutes.map((r) => (
-            <option key={`${r.origin}->${r.destination}`} value={`${r.origin}->${r.destination}`}>
-              {r.label}
-            </option>
-          ))}
-        </select>
+          <span className="whitespace-nowrap">{routeLabel}</span>
+          <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
 
         <select
           value={statusFilter}
@@ -478,7 +499,7 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between mb-3 px-0.5">
         <p className="text-xs text-slate-400 font-medium">
           {filteredParcels.length} {collectionsMode ? 'colectari' : 'colete'}
-          {(driverFilter !== 'all' || routeFilter !== 'all' || statusFilter !== 'all' || dateFilter || timeFilter || search) &&
+          {(driverFilter !== 'all' || routeFilters.size > 0 || statusFilter !== 'all' || dateFilter || timeFilter || search) &&
             ` (din ${totalAll})`}
         </p>
         <div className="flex items-center gap-3">
@@ -700,6 +721,81 @@ export default function AdminDashboard() {
                 className="flex-1 py-3.5 rounded-full bg-amber-50 text-amber-800 font-bold border border-amber-300 hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed text-base transition-colors"
               >
                 {markAllDelivered.isPending ? 'Se salvează...' : 'Confirmă'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Route multi-select Modal */}
+      {routeMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center"
+          {...backdropClose(() => setRouteMenuOpen(false))}
+        >
+          <div
+            className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl border border-card-border max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-card-border shrink-0">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-800">Filtrează rutele</h3>
+                <p className="text-xs text-slate-400">Bifează una sau mai multe · exportul le include pe toate</p>
+              </div>
+              <button
+                onClick={() => setRouteMenuOpen(false)}
+                className="w-9 h-9 flex items-center justify-center rounded-full border border-card-border text-slate-400 hover:text-slate-600 hover:bg-gray-50"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto px-3 py-3 space-y-1">
+              <label className="flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-gray-50 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={routeFilters.size === 0}
+                  onChange={() => setRouteFilters(new Set())}
+                  className="w-5 h-5 accent-blue-600 rounded shrink-0"
+                />
+                <span className="text-base font-semibold text-slate-700">Toate rutele</span>
+              </label>
+              {visibleRoutes.map((r) => {
+                const key = `${r.origin}->${r.destination}`
+                const checked = routeFilters.has(key)
+                return (
+                  <label
+                    key={key}
+                    className="flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-gray-50 cursor-pointer select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleRoute(key)}
+                      className="w-5 h-5 accent-blue-600 rounded shrink-0"
+                    />
+                    <span className="text-base font-medium text-slate-700">{r.label}</span>
+                  </label>
+                )
+              })}
+            </div>
+
+            <div className="px-5 py-4 border-t border-card-border shrink-0 flex gap-3">
+              {routeFilters.size > 0 && (
+                <button
+                  onClick={() => setRouteFilters(new Set())}
+                  className="px-5 py-3 rounded-full border border-card-border text-slate-500 font-semibold hover:bg-gray-50 text-sm transition-colors shrink-0"
+                >
+                  Resetează
+                </button>
+              )}
+              <button
+                onClick={() => setRouteMenuOpen(false)}
+                className="flex-1 py-3 rounded-full bg-pill-green-bg text-emerald-800 font-bold border border-pill-green-border hover:bg-emerald-100 text-sm transition-colors"
+              >
+                Arată {filteredParcels.length} {collectionsMode ? 'colectari' : 'colete'}
               </button>
             </div>
           </div>

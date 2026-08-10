@@ -240,6 +240,8 @@ export function useAddParcel(driverId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['parcels'] })
+      // Contactele abia scrise trebuie sa apara la urmatorul colet adaugat
+      queryClient.invalidateQueries({ queryKey: ['contacts'] })
     },
   })
 }

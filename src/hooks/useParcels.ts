@@ -117,8 +117,30 @@ export function useUpdateDriver() {
   })
 }
 
-// ADMIN: adauga un sofer nou (auth user + profil + rute) prin Edge Function
-// `admin-create-driver` — crearea userului auth cere service role.
+// Apeleaza endpoint-ul serverless de pe Vercel (`api/admin-drivers.ts`), care
+// face operatiile ce ating auth.users cu service role.
+// Nota: in `npm run dev` (Vite) ruta /api nu exista — pentru test local: `npx vercel dev`.
+async function invokeAdminApi<T>(action: string, payload: Record<string, unknown>): Promise<T> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Sesiune expirată — autentifică-te din nou')
+
+  const res = await fetch('/api/admin-drivers', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ action, ...payload }),
+  })
+
+  const body = await res.json().catch(() => null)
+  if (!res.ok || body?.error) {
+    throw new Error(body?.error || `Eroare server (${res.status})`)
+  }
+  return body as T
+}
+
+// ADMIN: adauga un sofer nou (auth user + profil + rute)
 export function useCreateDriver() {
   const queryClient = useQueryClient()
 
@@ -134,7 +156,7 @@ export function useCreateDriver() {
       role: 'admin' | 'driver'
       routes: DriverRouteInput[]
     }) =>
-      invokeAdminFn<{ success: true; driverId: string }>('admin-create-driver', {
+      invokeAdminApi<{ success: true; driverId: string }>('create', {
         username,
         pin,
         role,
@@ -147,7 +169,7 @@ export function useCreateDriver() {
   })
 }
 
-// ADMIN: sterge definitiv un sofer prin Edge Function `admin-delete-driver`.
+// ADMIN: sterge definitiv un sofer.
 // `deleteParcels` trebuie true daca soferul are colete (parcels.driver_id nu
 // cascadeaza) — coletele lui + pozele lor se sterg si ele.
 export function useDeleteDriver() {
@@ -155,7 +177,7 @@ export function useDeleteDriver() {
 
   return useMutation({
     mutationFn: ({ driverId, deleteParcels }: { driverId: string; deleteParcels?: boolean }) =>
-      invokeAdminFn<{ success: true; deletedParcels: number }>('admin-delete-driver', {
+      invokeAdminApi<{ success: true; deletedParcels: number }>('delete', {
         driverId,
         deleteParcels,
       }),

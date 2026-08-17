@@ -30,6 +30,7 @@ type RouteInput = {
 type VercelRequest = {
   method?: string
   headers: Record<string, string | string[] | undefined>
+  query?: Record<string, string | string[] | undefined>
   body?: unknown
 }
 type VercelResponse = {
@@ -67,18 +68,28 @@ function validateRoutes(routes: RouteInput[]): string | null {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
+  const isHealthCheck = req.method === 'GET' && req.query?.health === '1'
+
+  if (req.method !== 'POST' && !isHealthCheck) {
     return res.status(405).json({ error: 'Doar POST' })
   }
   if (!supabaseUrl || !serviceKey) {
     console.error('admin-drivers: env lipsa (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)')
-    return res.status(500).json({ error: 'Server neconfigurat' })
+    return res.status(500).json({ error: 'Server neconfigurat', ok: false })
   }
 
   // Client admin (service role) — bypass RLS, poate crea/sterge auth.users
   const admin = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+
+  // Health check public: confirma doar ca env-ul e pus si cheia service_role
+  // functioneaza. Nu intoarce date — detaliile erorii merg in logurile Vercel.
+  if (isHealthCheck) {
+    const { error } = await admin.from('profiles').select('id', { count: 'exact', head: true })
+    if (error) console.error('admin-drivers health check failed:', error.message)
+    return res.status(error ? 500 : 200).json({ ok: !error, db: error ? 'error' : 'ok' })
+  }
 
   try {
     // ── 1. Verifica sesiunea apelantului ──

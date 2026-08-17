@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Parcel, NewParcelData, NewCollectionData, Profile } from '../lib/types'
+import type { Parcel, NewParcelData, NewCollectionData, Profile, DriverRouteInput } from '../lib/types'
 import { getParcelAllPhotoPaths, batchPrefetchSignedUrls } from './usePhotoUrl'
 import { compressImage } from '../lib/compressImage'
 import {
@@ -78,6 +78,22 @@ export function useAllDrivers() {
   })
 }
 
+// Apeleaza o Edge Function de admin si normalizeaza erorile.
+// functions.invoke NU arunca pe status 4xx/5xx — mesajul real vine in body.
+async function invokeAdminFn<T>(name: string, body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke(name, { body })
+  if (error) {
+    const ctx = (error as { context?: Response }).context
+    if (ctx && typeof ctx.json === 'function') {
+      const payload = await ctx.json().catch(() => null)
+      throw new Error(payload?.error || error.message)
+    }
+    throw new Error(error.message)
+  }
+  if (data?.error) throw new Error(data.error)
+  return data as T
+}
+
 // ADMIN: schimba numele (username) si/sau PIN-ul unui sofer.
 // PIN-ul e si parola de login si username-ul formeaza email-ul, deci nu pot fi
 // schimbate doar in tabela `profiles` — apelam Edge Function `admin-update-driver`
@@ -86,7 +102,7 @@ export function useUpdateDriver() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       driverId,
       username,
       pin,
@@ -94,25 +110,108 @@ export function useUpdateDriver() {
       driverId: string
       username?: string
       pin?: string
-    }) => {
-      const { data, error } = await supabase.functions.invoke('admin-update-driver', {
-        body: { driverId, username, pin },
-      })
-      // functions.invoke nu arunca pe status 4xx/5xx — citim eroarea din body
-      if (error) {
-        const ctx = (error as { context?: Response }).context
-        if (ctx && typeof ctx.json === 'function') {
-          const payload = await ctx.json().catch(() => null)
-          throw new Error(payload?.error || error.message)
-        }
-        throw new Error(error.message)
-      }
-      if (data?.error) throw new Error(data.error)
-      return data
-    },
+    }) => invokeAdminFn<{ success: true }>('admin-update-driver', { driverId, username, pin }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drivers'] })
     },
+  })
+}
+
+// ADMIN: adauga un sofer nou (auth user + profil + rute) prin Edge Function
+// `admin-create-driver` — crearea userului auth cere service role.
+export function useCreateDriver() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      username,
+      pin,
+      role,
+      routes,
+    }: {
+      username: string
+      pin: string
+      role: 'admin' | 'driver'
+      routes: DriverRouteInput[]
+    }) =>
+      invokeAdminFn<{ success: true; driverId: string }>('admin-create-driver', {
+        username,
+        pin,
+        role,
+        routes,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drivers'] })
+      queryClient.invalidateQueries({ queryKey: ['driver-routes'] })
+    },
+  })
+}
+
+// ADMIN: sterge definitiv un sofer prin Edge Function `admin-delete-driver`.
+// `deleteParcels` trebuie true daca soferul are colete (parcels.driver_id nu
+// cascadeaza) — coletele lui + pozele lor se sterg si ele.
+export function useDeleteDriver() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ driverId, deleteParcels }: { driverId: string; deleteParcels?: boolean }) =>
+      invokeAdminFn<{ success: true; deletedParcels: number }>('admin-delete-driver', {
+        driverId,
+        deleteParcels,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drivers'] })
+      queryClient.invalidateQueries({ queryKey: ['driver-routes'] })
+      queryClient.invalidateQueries({ queryKey: ['parcels'] })
+      queryClient.invalidateQueries({ queryKey: ['driver-parcel-stats'] })
+    },
+  })
+}
+
+// ADMIN: inlocuieste rutele + range-urile unui sofer.
+// Merge direct pe tabela (RLS: `route_ranges_admin_all`), fara Edge Function.
+export function useSetDriverRoutes() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ driverId, routes }: { driverId: string; routes: DriverRouteInput[] }) => {
+      const { error: delError } = await supabase
+        .from('driver_route_ranges')
+        .delete()
+        .eq('driver_id', driverId)
+      if (delError) throw delError
+
+      if (routes.length > 0) {
+        const { error: insError } = await supabase
+          .from('driver_route_ranges')
+          .insert(routes.map((r) => ({ ...r, driver_id: driverId })))
+        if (insError) throw insError
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['driver-routes'] })
+    },
+  })
+}
+
+// ADMIN: cate colete are un sofer (folosit inainte de stergere)
+export function useDriverParcelStats(driverId: string | undefined) {
+  return useQuery({
+    queryKey: ['driver-parcel-stats', driverId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('parcels')
+        .select('is_archived')
+        .eq('driver_id', driverId!)
+      if (error) throw error
+      const rows = data as { is_archived: boolean }[]
+      return {
+        total: rows.length,
+        active: rows.filter((r) => !r.is_archived).length,
+        archived: rows.filter((r) => r.is_archived).length,
+      }
+    },
+    enabled: !!driverId,
   })
 }
 
@@ -138,10 +237,10 @@ export function useDriverRoutes(driverId: string | undefined) {
       if (!driverId) return []
       const { data, error } = await supabase
         .from('driver_route_ranges')
-        .select('origin, destination')
+        .select('origin, destination, range_start, range_end')
         .eq('driver_id', driverId)
       if (error) throw error
-      return data as { origin: string; destination: string }[]
+      return data as DriverRouteInput[]
     },
     enabled: !!driverId,
   })

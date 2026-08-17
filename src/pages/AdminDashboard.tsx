@@ -17,11 +17,12 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useAuth } from '../hooks/useAuth'
-import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel, useMarkAllDelivered, useUpdateDriver } from '../hooks/useParcels'
+import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel, useMarkAllDelivered, useUpdateDriver, useCreateDriver, useDeleteDriver, useSetDriverRoutes, useDriverRoutes, useDriverParcelStats } from '../hooks/useParcels'
 import { formatPrice, getDestLabel, ROUTES, calculatePrice, matchesAddedDateTime, normalizePhone, cleanPhone2, compareBySeriesThenNumber } from '../lib/utils'
+import type { DestinationCode } from '../lib/utils'
 import { exportParcelsToExcel, exportCashReportToExcel } from '../lib/exportExcel'
 import { backdropClose } from '../lib/backdropClose'
-import type { Parcel, Profile } from '../lib/types'
+import type { Parcel, Profile, DriverRouteInput } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
 import AddPhotos from '../components/AddPhotos'
@@ -923,6 +924,7 @@ export default function AdminDashboard() {
       {showDriverManager && (
         <DriverManagerModal
           drivers={drivers ?? []}
+          currentUserId={profile?.id}
           onClose={() => setShowDriverManager(false)}
         />
       )}
@@ -1520,15 +1522,152 @@ function AdminParcelModal({
   )
 }
 
-// ── Driver Manager Modal — schimba nume + PIN ──
+// ── Driver Manager — adauga / editeaza / sterge soferi ──
+
+const driverInputCls = 'w-full px-4 py-2.5 rounded-xl border border-card-border bg-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300 transition-colors'
+
+// Rutele in formular: numerele sunt string ca sa poata fi si goale in timpul editarii
+type RouteDraft = { origin: DestinationCode; destination: DestinationCode; start: string; end: string }
+
+function toRouteDrafts(routes: DriverRouteInput[]): RouteDraft[] {
+  return routes.map((r) => ({
+    origin: r.origin,
+    destination: r.destination,
+    start: String(r.range_start),
+    end: String(r.range_end),
+  }))
+}
+
+function parseRouteDrafts(drafts: RouteDraft[]): { routes: DriverRouteInput[] } | { error: string } {
+  const routes: DriverRouteInput[] = []
+  const seen = new Set<string>()
+
+  for (const d of drafts) {
+    const key = `${d.origin}>${d.destination}`
+    if (seen.has(key)) {
+      return { error: `Ruta ${getDestLabel(d.origin)} → ${getDestLabel(d.destination)} apare de două ori` }
+    }
+    seen.add(key)
+
+    const start = Number(d.start)
+    const end = Number(d.end)
+    if (!d.start || !d.end || !Number.isInteger(start) || !Number.isInteger(end)) {
+      return { error: 'Completează numerele (de la / până la) pentru fiecare rută' }
+    }
+    if (end <= start) {
+      return { error: `Range invalid pe ${getDestLabel(d.origin)} → ${getDestLabel(d.destination)}` }
+    }
+    routes.push({ origin: d.origin, destination: d.destination, range_start: start, range_end: end })
+  }
+
+  return { routes }
+}
+
+// Semnatura stabila a unui set de rute — ca sa vedem daca s-a schimbat ceva
+function routesKey(routes: DriverRouteInput[]) {
+  return routes
+    .map((r) => `${r.origin}>${r.destination}:${r.range_start}-${r.range_end}`)
+    .sort()
+    .join('|')
+}
+
+function DriverRoutesEditor({
+  drafts,
+  onChange,
+}: {
+  drafts: RouteDraft[]
+  onChange: (drafts: RouteDraft[]) => void
+}) {
+  function update(index: number, patch: Partial<RouteDraft>) {
+    onChange(drafts.map((d, i) => (i === index ? { ...d, ...patch } : d)))
+  }
+
+  function addRow() {
+    const used = new Set(drafts.map((d) => `${d.origin}>${d.destination}`))
+    const next = ROUTES.find((r) => !used.has(`${r.origin}>${r.destination}`)) ?? ROUTES[0]
+    onChange([...drafts, { origin: next.origin, destination: next.destination, start: '', end: '' }])
+  }
+
+  return (
+    <div className="space-y-2">
+      <label className="text-xs font-semibold text-slate-500">Rute și numerotare</label>
+
+      {drafts.length === 0 && (
+        <p className="text-[11px] text-slate-400">
+          Fără rute nu poate adăuga colete — doar primește transferuri de la admin.
+        </p>
+      )}
+
+      {drafts.map((d, i) => (
+        <div key={i} className="rounded-xl border border-card-border bg-white p-2.5 space-y-2">
+          <div className="flex gap-2">
+            <select
+              value={`${d.origin}>${d.destination}`}
+              onChange={(e) => {
+                const [origin, destination] = e.target.value.split('>') as DestinationCode[]
+                update(i, { origin, destination })
+              }}
+              className="flex-1 px-3 py-2 rounded-lg border border-card-border bg-white text-sm font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+            >
+              {ROUTES.map((r) => (
+                <option key={`${r.origin}>${r.destination}`} value={`${r.origin}>${r.destination}`}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => onChange(drafts.filter((_, idx) => idx !== i))}
+              className="w-9 h-9 shrink-0 flex items-center justify-center rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition-colors"
+              aria-label="Șterge ruta"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="de la"
+              value={d.start}
+              onChange={(e) => update(i, { start: e.target.value.replace(/\D/g, '') })}
+              className="flex-1 px-3 py-2 rounded-lg border border-card-border bg-white text-sm text-center focus:outline-none focus:ring-1 focus:ring-indigo-300"
+            />
+            <span className="text-slate-300 text-sm">—</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="până la"
+              value={d.end}
+              onChange={(e) => update(i, { end: e.target.value.replace(/\D/g, '') })}
+              className="flex-1 px-3 py-2 rounded-lg border border-card-border bg-white text-sm text-center focus:outline-none focus:ring-1 focus:ring-indigo-300"
+            />
+          </div>
+        </div>
+      ))}
+
+      <button
+        onClick={addRow}
+        className="w-full py-2 rounded-xl border border-dashed border-indigo-300 text-indigo-500 font-semibold text-xs hover:bg-indigo-50 transition-colors"
+      >
+        + Adaugă rută
+      </button>
+    </div>
+  )
+}
+
 function DriverManagerModal({
   drivers,
+  currentUserId,
   onClose,
 }: {
   drivers: Profile[]
+  currentUserId: string | undefined
   onClose: () => void
 }) {
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
   const sorted = [...drivers].sort((a, b) => a.username.localeCompare(b.username))
 
   return (
@@ -1543,7 +1682,7 @@ function DriverManagerModal({
         <div className="sticky top-0 bg-white border-b border-card-border px-5 py-4 flex items-center justify-between rounded-t-3xl shrink-0">
           <div>
             <h2 className="text-lg font-extrabold text-slate-800">Șoferi</h2>
-            <p className="text-xs text-slate-400">Schimbă numele și PIN-ul</p>
+            <p className="text-xs text-slate-400">Adaugă, editează sau șterge șoferi</p>
           </div>
           <button
             onClick={onClose}
@@ -1556,12 +1695,30 @@ function DriverManagerModal({
         </div>
 
         <div className="overflow-y-auto px-4 py-4 space-y-2">
+          {adding ? (
+            <DriverAddForm onDone={() => setAdding(false)} />
+          ) : (
+            <button
+              onClick={() => {
+                setEditingId(null)
+                setAdding(true)
+              }}
+              className="w-full py-3 rounded-2xl border border-dashed border-indigo-300 text-indigo-600 font-bold text-sm hover:bg-indigo-50 transition-colors"
+            >
+              + Adaugă șofer
+            </button>
+          )}
+
           {sorted.map((driver) => (
             <DriverManagerRow
               key={driver.id}
               driver={driver}
               isEditing={editingId === driver.id}
-              onEdit={() => setEditingId(driver.id)}
+              isSelf={driver.id === currentUserId}
+              onEdit={() => {
+                setAdding(false)
+                setEditingId(driver.id)
+              }}
               onDone={() => setEditingId(null)}
             />
           ))}
@@ -1571,32 +1728,167 @@ function DriverManagerModal({
   )
 }
 
+// Formular de adaugare: nume + PIN + rol + rutele cu range-uri
+function DriverAddForm({ onDone }: { onDone: () => void }) {
+  const createDriver = useCreateDriver()
+  const [name, setName] = useState('')
+  const [pin, setPin] = useState('')
+  const [role, setRole] = useState<'driver' | 'admin'>('driver')
+  const [drafts, setDrafts] = useState<RouteDraft[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  async function save() {
+    setError(null)
+    const trimmedName = name.trim().toLowerCase()
+    const trimmedPin = pin.trim()
+
+    if (!/^[a-z0-9_]{2,}$/.test(trimmedName)) {
+      setError('Nume invalid (litere mici, cifre, _; minim 2 caractere)')
+      return
+    }
+    if (!/^\d{4,}$/.test(trimmedPin)) {
+      setError('PIN invalid (minim 4 cifre)')
+      return
+    }
+    const parsed = parseRouteDrafts(drafts)
+    if ('error' in parsed) {
+      setError(parsed.error)
+      return
+    }
+
+    try {
+      await createDriver.mutateAsync({
+        username: trimmedName,
+        pin: trimmedPin,
+        role,
+        routes: parsed.routes,
+      })
+      onDone()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Eroare la adăugare')
+    }
+  }
+
+  return (
+    <div className="px-4 py-3.5 rounded-2xl border border-indigo-200 bg-indigo-50/30 space-y-3">
+      <p className="text-sm font-extrabold text-slate-800">Șofer nou</p>
+
+      <div className="space-y-1">
+        <label className="text-xs font-semibold text-slate-500">Nume (folosit și la login)</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="ex: ion_universal"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          className={driverInputCls}
+        />
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-xs font-semibold text-slate-500">PIN (cod de autentificare)</label>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+          placeholder="4 cifre"
+          className={driverInputCls}
+        />
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-xs font-semibold text-slate-500">Rol</label>
+        <div className="flex gap-2">
+          {(['driver', 'admin'] as const).map((r) => (
+            <button
+              key={r}
+              onClick={() => setRole(r)}
+              className={`flex-1 py-2 rounded-xl text-sm font-bold border transition-colors ${
+                role === r
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-slate-500 border-card-border hover:bg-gray-50'
+              }`}
+            >
+              {r === 'driver' ? 'Șofer' : 'Admin'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <DriverRoutesEditor drafts={drafts} onChange={setDrafts} />
+
+      {error && <p className="text-xs font-medium text-red-500">{error}</p>}
+
+      <div className="flex gap-2.5 pt-0.5">
+        <button
+          onClick={onDone}
+          disabled={createDriver.isPending}
+          className="flex-1 py-2.5 rounded-full border border-card-border text-slate-500 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+        >
+          Anulează
+        </button>
+        <button
+          onClick={save}
+          disabled={createDriver.isPending}
+          className="flex-1 py-2.5 rounded-full bg-indigo-600 text-white font-bold text-sm border border-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-50"
+        >
+          {createDriver.isPending ? 'Se adaugă...' : 'Adaugă'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function DriverManagerRow({
   driver,
   isEditing,
+  isSelf,
   onEdit,
   onDone,
 }: {
   driver: Profile
   isEditing: boolean
+  isSelf: boolean
   onEdit: () => void
   onDone: () => void
 }) {
   const updateDriver = useUpdateDriver()
+  const setDriverRoutes = useSetDriverRoutes()
+  const deleteDriver = useDeleteDriver()
+  const { data: existingRoutes } = useDriverRoutes(isEditing ? driver.id : undefined)
+
   const [name, setName] = useState(driver.username)
   const [pin, setPin] = useState(driver.pin_code)
+  // Rutele editate; cand adminul n-a atins nimic pornim de la cele din DB
+  const [editedDrafts, setEditedDrafts] = useState<RouteDraft[] | null>(null)
+  const drafts = editedDrafts ?? (existingRoutes ? toRouteDrafts(existingRoutes) : null)
   const [error, setError] = useState<string | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
+
+  const stats = useDriverParcelStats(confirmingDelete ? driver.id : undefined)
+  const hasParcels = (stats.data?.total ?? 0) > 0
+  const canConfirmDelete = !!stats.data && (!hasParcels || confirmText.trim().toLowerCase() === driver.username)
+  const isBusy = updateDriver.isPending || setDriverRoutes.isPending || deleteDriver.isPending
 
   // Reseteaza campurile cand se intra in editare
   function startEdit() {
     setName(driver.username)
     setPin(driver.pin_code)
+    setEditedDrafts(null)
     setError(null)
+    setConfirmingDelete(false)
+    setConfirmText('')
     onEdit()
   }
 
   function cancel() {
     setError(null)
+    setConfirmingDelete(false)
+    setConfirmText('')
     onDone()
   }
 
@@ -1607,7 +1899,15 @@ function DriverManagerRow({
     const usernameChanged = trimmedName !== driver.username
     const pinChanged = trimmedPin !== driver.pin_code
 
-    if (!usernameChanged && !pinChanged) {
+    const parsed = drafts ? parseRouteDrafts(drafts) : null
+    if (parsed && 'error' in parsed) {
+      setError(parsed.error)
+      return
+    }
+    const routesChanged =
+      !!parsed && !!existingRoutes && routesKey(parsed.routes) !== routesKey(existingRoutes)
+
+    if (!usernameChanged && !pinChanged && !routesChanged) {
       onDone()
       return
     }
@@ -1621,14 +1921,29 @@ function DriverManagerRow({
     }
 
     try {
-      await updateDriver.mutateAsync({
-        driverId: driver.id,
-        username: usernameChanged ? trimmedName : undefined,
-        pin: pinChanged ? trimmedPin : undefined,
-      })
+      if (usernameChanged || pinChanged) {
+        await updateDriver.mutateAsync({
+          driverId: driver.id,
+          username: usernameChanged ? trimmedName : undefined,
+          pin: pinChanged ? trimmedPin : undefined,
+        })
+      }
+      if (routesChanged && parsed) {
+        await setDriverRoutes.mutateAsync({ driverId: driver.id, routes: parsed.routes })
+      }
       onDone()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Eroare la salvare')
+    }
+  }
+
+  async function remove() {
+    setError(null)
+    try {
+      await deleteDriver.mutateAsync({ driverId: driver.id, deleteParcels: hasParcels })
+      onDone()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Eroare la ștergere')
     }
   }
 
@@ -1651,8 +1966,6 @@ function DriverManagerRow({
     )
   }
 
-  const inputCls = 'w-full px-4 py-2.5 rounded-xl border border-card-border bg-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300 transition-colors'
-
   return (
     <div className="px-4 py-3.5 rounded-2xl border border-indigo-200 bg-indigo-50/30 space-y-3">
       <div className="space-y-1">
@@ -1664,7 +1977,7 @@ function DriverManagerRow({
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          className={inputCls}
+          className={driverInputCls}
         />
       </div>
       <div className="space-y-1">
@@ -1674,9 +1987,15 @@ function DriverManagerRow({
           inputMode="numeric"
           value={pin}
           onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-          className={inputCls}
+          className={driverInputCls}
         />
       </div>
+
+      {drafts === null ? (
+        <p className="text-xs text-slate-400">Se încarcă rutele...</p>
+      ) : (
+        <DriverRoutesEditor drafts={drafts} onChange={setEditedDrafts} />
+      )}
 
       {error && (
         <p className="text-xs font-medium text-red-500">{error}</p>
@@ -1685,19 +2004,77 @@ function DriverManagerRow({
       <div className="flex gap-2.5 pt-0.5">
         <button
           onClick={cancel}
-          disabled={updateDriver.isPending}
+          disabled={isBusy}
           className="flex-1 py-2.5 rounded-full border border-card-border text-slate-500 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
           Anulează
         </button>
         <button
           onClick={save}
-          disabled={updateDriver.isPending}
+          disabled={isBusy}
           className="flex-1 py-2.5 rounded-full bg-indigo-600 text-white font-bold text-sm border border-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-50"
         >
-          {updateDriver.isPending ? 'Se salvează...' : 'Salvează'}
+          {updateDriver.isPending || setDriverRoutes.isPending ? 'Se salvează...' : 'Salvează'}
         </button>
       </div>
+
+      {/* Stergere — ascunsa pe propriul cont (nu te poti sterge pe tine) */}
+      {!isSelf && (
+        confirmingDelete ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50/60 p-3 space-y-2">
+            <p className="text-sm font-bold text-red-600">Șterge „{driver.username}"?</p>
+
+            {stats.isLoading ? (
+              <p className="text-xs text-slate-500">Se verifică coletele...</p>
+            ) : hasParcels ? (
+              <>
+                <p className="text-xs text-slate-600">
+                  Are {stats.data!.total} colete ({stats.data!.active} active, {stats.data!.archived} arhivate).
+                  Ștergerea șterge definitiv și coletele lui, cu tot cu poze. Dacă vrei să le păstrezi,
+                  transferă-le altui șofer înainte.
+                </p>
+                <input
+                  type="text"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder={`scrie „${driver.username}" ca să confirmi`}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="w-full px-3 py-2 rounded-lg border border-red-200 bg-white text-sm focus:outline-none focus:ring-1 focus:ring-red-300"
+                />
+              </>
+            ) : (
+              <p className="text-xs text-slate-600">Nu are colete. Ștergerea e definitivă.</p>
+            )}
+
+            <div className="flex gap-2.5">
+              <button
+                onClick={() => { setConfirmingDelete(false); setConfirmText('') }}
+                disabled={deleteDriver.isPending}
+                className="flex-1 py-2.5 rounded-full border border-card-border bg-white text-slate-500 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Anulează
+              </button>
+              <button
+                onClick={remove}
+                disabled={!canConfirmDelete || deleteDriver.isPending}
+                className="flex-1 py-2.5 rounded-full bg-red-500 text-white font-bold text-sm border border-red-500 hover:bg-red-400 transition-colors disabled:opacity-40"
+              >
+                {deleteDriver.isPending ? 'Se șterge...' : 'Șterge definitiv'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmingDelete(true)}
+            disabled={isBusy}
+            className="w-full py-2.5 rounded-full border border-red-200 text-red-500 font-bold text-sm hover:bg-red-50 transition-colors disabled:opacity-50"
+          >
+            Șterge șoferul
+          </button>
+        )
+      )}
     </div>
   )
 }

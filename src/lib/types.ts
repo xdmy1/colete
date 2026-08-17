@@ -20,6 +20,14 @@ export interface DriverRouteRange {
   range_end: number
 }
 
+// Ruta + range-ul unui sofer, fara id-uri — folosita la creare/editare din admin
+export interface DriverRouteInput {
+  origin: DestinationCode
+  destination: DestinationCode
+  range_start: number
+  range_end: number
+}
+
 export interface ContactDetails {
   name: string
   phone: string

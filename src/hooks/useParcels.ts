@@ -133,9 +133,19 @@ async function invokeAdminApi<T>(action: string, payload: Record<string, unknown
     body: JSON.stringify({ action, ...payload }),
   })
 
-  const body = await res.json().catch(() => null)
+  const raw = await res.text()
+  let body: { error?: string } | null = null
+  try {
+    body = raw ? JSON.parse(raw) : null
+  } catch {
+    // Raspuns non-JSON (ex. index.html cand ruta /api nu exista in dev)
+  }
+
   if (!res.ok || body?.error) {
     throw new Error(body?.error || `Eroare server (${res.status})`)
+  }
+  if (!body) {
+    throw new Error('Endpoint /api indisponibil (local rulează cu `npx vercel dev`)')
   }
   return body as T
 }

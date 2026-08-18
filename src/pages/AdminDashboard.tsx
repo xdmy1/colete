@@ -18,7 +18,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useAuth } from '../hooks/useAuth'
 import { useAllParcels, useAllDrivers, useReorderParcels, useTransferParcels, useUpdateParcel, useDeleteParcel, useMarkAllDelivered, useUpdateDriver, useCreateDriver, useDeleteDriver, useSetDriverRoutes, useDriverRoutes, useDriverParcelStats } from '../hooks/useParcels'
-import { formatPrice, getDestLabel, ROUTES, calculatePrice, matchesAddedDateTime, normalizePhone, cleanPhone2, compareBySeriesThenNumber } from '../lib/utils'
+import { formatPrice, getDestLabel, ROUTES, calculatePrice, matchesAddedDateTime, normalizePhone, cleanPhone2, hasPhoneNumber, compareBySeriesThenNumber } from '../lib/utils'
 import type { DestinationCode } from '../lib/utils'
 import { exportParcelsToExcel, exportCashReportToExcel } from '../lib/exportExcel'
 import { backdropClose } from '../lib/backdropClose'
@@ -1207,7 +1207,13 @@ function AdminParcelModal({
   const isCollection = parcel.record_type === 'collection'
   const existingPhotoCount = parcel.photo_urls?.length || (parcel.photo_url ? 1 : 0)
 
+  // Nu lasam colete fara numar de telefon (la colectare exista doar contactul)
+  const senderPhoneOk = hasPhoneNumber(senderPhone)
+  const receiverPhoneOk = hasPhoneNumber(receiverPhone)
+  const canSave = isCollection ? senderPhoneOk : senderPhoneOk && receiverPhoneOk
+
   function handleSave() {
+    if (!canSave) return
     if (isCollection) {
       onSave({
         sender_details: { name: '', phone: senderPhone, phone2: cleanPhone2(senderPhone2), address: senderAddress },
@@ -1362,6 +1368,18 @@ function AdminParcelModal({
               </h3>
               <AddPhotos files={newPhotos} onChange={setNewPhotos} />
 
+              {!canSave && (
+                <p className="text-xs font-semibold text-red-500 pt-1">
+                  {isCollection
+                    ? 'Completează numărul de telefon'
+                    : !senderPhoneOk && !receiverPhoneOk
+                      ? 'Completează telefonul expeditorului și al destinatarului'
+                      : !senderPhoneOk
+                        ? 'Completează telefonul expeditorului'
+                        : 'Completează telefonul destinatarului'}
+                </p>
+              )}
+
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={onClose}
@@ -1371,7 +1389,7 @@ function AdminParcelModal({
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={isSaving}
+                  disabled={isSaving || !canSave}
                   className="flex-1 py-3 rounded-full bg-pill-green-bg text-emerald-800 font-bold border border-pill-green-border hover:bg-emerald-100 disabled:opacity-50 text-sm transition-colors"
                 >
                   {isSaving ? 'Se salvează...' : 'Salvează'}

@@ -160,11 +160,34 @@ export function normalizePhone(phone: string | null | undefined): string {
   return (phone ?? '').replace(/\D+/g, '')
 }
 
+// Cifrele numarului FARA codul de tara. Valoarea e stocata ca "{cod} {numar}"
+// (ex: "+373 60123456"), deci luam ce e dupa primul spatiu. Daca nu exista spatiu
+// (numar lipit / vechi), scoatem prefixul cunoscut de la inceput daca se potriveste.
+export function phoneNationalDigits(
+  phone: string | null | undefined,
+  prefix?: string
+): string {
+  const value = (phone ?? '').trim()
+  const idx = value.indexOf(' ')
+  if (idx >= 0) return normalizePhone(value.slice(idx + 1))
+  const all = normalizePhone(value)
+  const code = normalizePhone(prefix)
+  return code && all.startsWith(code) ? all.slice(code.length) : all
+}
+
+// Minim de cifre ca sa consideram un numar completat (fara codul de tara).
+// Nu exista numar real mai scurt de atat — prinde campurile lasate doar cu prefix.
+export const MIN_PHONE_DIGITS = 5
+
+export function hasPhoneNumber(phone: string | null | undefined, prefix?: string): boolean {
+  return phoneNationalDigits(phone, prefix).length >= MIN_PHONE_DIGITS
+}
+
 // Numarul de rezerva (al doilea telefon): pastreaza-l doar daca are cifre,
 // altfel intoarce undefined ca sa nu salvam un prefix gol (ex: "+44 ").
 export function cleanPhone2(phone2: string | undefined): string | undefined {
   if (phone2 === undefined) return undefined
-  return normalizePhone(phone2).length > 0 ? phone2.trim() : undefined
+  return phoneNationalDigits(phone2).length > 0 ? phone2.trim() : undefined
 }
 
 export function matchesAddedDateTime(createdAt: string, dateFilter: string, timeFilter: string): boolean {

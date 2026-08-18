@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useAddCollection } from '../hooks/useParcels'
 import type { DestinationCode } from '../lib/utils'
-import { DESTINATIONS, PHONE_PREFIX, getDestLabel } from '../lib/utils'
+import { DESTINATIONS, PHONE_PREFIX, getDestLabel, hasPhoneNumber } from '../lib/utils'
 import Button from '../components/ui/Button'
 import PhoneInput from '../components/ui/PhoneInput'
 
@@ -29,7 +29,7 @@ export default function AddCollection() {
   }
 
   async function handleSubmit() {
-    if (!country || !phone.trim() || !address.trim()) return
+    if (!isValid) return
     try {
       await addCollection.mutateAsync({
         country_code: country,
@@ -47,7 +47,7 @@ export default function AddCollection() {
   const inputCls =
     'w-full px-4 py-3 rounded-xl border border-card-border text-base focus:outline-none focus:ring-1 focus:ring-pill-green-border focus:border-pill-green-border transition-colors'
 
-  const isValid = country && phone.trim().length > (PHONE_PREFIX[country]?.length || 0) && address.trim()
+  const isValid = country && hasPhoneNumber(phone, PHONE_PREFIX[country]) && address.trim()
 
   if (!profile) {
     return (

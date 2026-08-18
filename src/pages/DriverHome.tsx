@@ -7,7 +7,7 @@ import {
   useMarkDelivered,
   useUpdateParcel,
 } from '../hooks/useParcels'
-import { formatPrice, getDestLabel, calculatePrice, matchesAddedDateTime, normalizePhone, cleanPhone2, compareBySeriesThenNumber } from '../lib/utils'
+import { formatPrice, getDestLabel, calculatePrice, matchesAddedDateTime, normalizePhone, cleanPhone2, hasPhoneNumber, compareBySeriesThenNumber } from '../lib/utils'
 import { exportCashReportToExcel } from '../lib/exportExcel'
 import { backdropClose } from '../lib/backdropClose'
 import type { Parcel } from '../lib/types'
@@ -799,7 +799,13 @@ function ParcelDetailModal({
   const inputCls = 'w-full px-4 py-2.5 rounded-xl border border-card-border bg-white text-sm focus:outline-none focus:ring-1 focus:ring-pill-green-border focus:border-pill-green-border transition-colors'
   const selectCls = inputCls
 
+  // Nu lasam colete fara numar de telefon (nici expeditor, nici destinatar)
+  const senderPhoneOk = hasPhoneNumber(senderPhone)
+  const receiverPhoneOk = hasPhoneNumber(receiverPhone)
+  const canSave = senderPhoneOk && receiverPhoneOk
+
   function handleSave() {
+    if (!canSave) return
     onSave({
       sender_details: { name: senderName, phone: senderPhone, phone2: cleanPhone2(senderPhone2), address: senderAddress },
       receiver_details: { name: receiverName, phone: receiverPhone, phone2: cleanPhone2(receiverPhone2), address: receiverAddress },
@@ -910,6 +916,16 @@ function ParcelDetailModal({
               </h3>
               <AddPhotos files={newPhotos} onChange={setNewPhotos} />
 
+              {!canSave && (
+                <p className="text-xs font-semibold text-red-500 pt-1">
+                  {!senderPhoneOk && !receiverPhoneOk
+                    ? 'Completează telefonul expeditorului și al destinatarului'
+                    : !senderPhoneOk
+                      ? 'Completează telefonul expeditorului'
+                      : 'Completează telefonul destinatarului'}
+                </p>
+              )}
+
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={onClose}
@@ -919,7 +935,7 @@ function ParcelDetailModal({
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={isSaving}
+                  disabled={isSaving || !canSave}
                   className="flex-1 py-3 rounded-full bg-pill-green-bg text-emerald-800 font-bold border border-pill-green-border hover:bg-emerald-100 disabled:opacity-50 text-sm transition-colors"
                 >
                   {isSaving ? 'Se salvează...' : 'Salvează'}

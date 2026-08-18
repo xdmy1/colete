@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { ContactDetails } from '../../lib/types'
 import type { DestinationCode } from '../../lib/utils'
-import { calculatePrice, getCurrency, formatPrice, PHONE_PREFIX, normalizePhone, cleanPhone2 } from '../../lib/utils'
+import { calculatePrice, getCurrency, formatPrice, PHONE_PREFIX, normalizePhone, cleanPhone2, hasPhoneNumber } from '../../lib/utils'
 import { useContacts } from '../../hooks/useContacts'
 import { useClientByPhoneDigits } from '../../hooks/useClients'
 import Button from '../ui/Button'
@@ -150,13 +150,20 @@ export default function StepDetails({
   const autoPrice = calculatePrice(weight, originCode, deliveryDestination)
   const displayPrice = priceAuto ? autoPrice : manualPrice
 
-  const isValid =
-    sender.name.trim() &&
-    sender.phone.trim() &&
-    receiver.name.trim() &&
-    receiver.phone.trim() &&
-    receiver.address.trim() &&
-    weight > 0
+  // Telefonul trebuie sa aiba cifre, nu doar prefixul (ex: "+373 " singur nu e valid)
+  const senderPhoneOk = hasPhoneNumber(sender.phone, PHONE_PREFIX[originCode])
+  const receiverPhoneOk = hasPhoneNumber(receiver.phone, PHONE_PREFIX[deliveryDestination])
+
+  const missing = [
+    !receiver.name.trim() && 'nume destinatar',
+    !receiverPhoneOk && 'telefon destinatar',
+    !receiver.address.trim() && 'adresă destinatar',
+    !sender.name.trim() && 'nume expeditor',
+    !senderPhoneOk && 'telefon expeditor',
+    !(weight > 0) && 'greutate',
+  ].filter(Boolean) as string[]
+
+  const isValid = missing.length === 0
 
   // Scoate numarul de rezerva daca a ramas gol (doar prefix / fara cifre)
   function cleanContact(c: ContactDetails): ContactDetails {
@@ -473,6 +480,12 @@ export default function StepDetails({
           )}
         </div>
       </div>
+
+      {missing.length > 0 && (
+        <p className="text-xs font-semibold text-red-500 mt-4 -mb-2">
+          Lipsește: {missing.join(', ')}
+        </p>
+      )}
 
       <Button
         size="lg"

@@ -48,7 +48,7 @@ export function useContacts() {
 
       const byPhone = new Map<string, ContactDetails>()
 
-      function upsert(c: { name?: string; phone?: string; address?: string }) {
+      function upsert(c: { name?: string; phone?: string; address?: string; city?: string }) {
         const phone = (c.phone ?? '').trim()
         const digits = normalizePhone(phone)
         // Ignora prefixele goale gen "+32 " ramase in colete vechi
@@ -56,13 +56,15 @@ export function useContacts() {
         const name = (c.name ?? '').trim()
         if (!name) return
         const address = (c.address ?? '').trim()
+        const city = (c.city ?? '').trim()
         const existing = byPhone.get(digits)
-        // Nu pierde o adresa deja cunoscuta pentru acelasi numar
-        if (existing?.address && !address) {
-          byPhone.set(digits, { name, phone, address: existing.address })
-        } else {
-          byPhone.set(digits, { name, phone, address })
-        }
+        // Nu pierde o adresa / un oras deja cunoscute pentru acelasi numar
+        byPhone.set(digits, {
+          name,
+          phone,
+          address: address || existing?.address || '',
+          city: city || existing?.city || undefined,
+        })
       }
 
       for (const c of clients) upsert(c)

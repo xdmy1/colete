@@ -21,11 +21,14 @@ export async function exportParcelsToExcel(
     { header: 'Adresa Expeditor',  key: 'senderAddr',     width: 32  },
     { header: 'Destinatar',        key: 'receiver',       width: 24  },
     { header: 'Tel. Destinatar',   key: 'receiverPhone',  width: 16  },
+    { header: 'Oraș',              key: 'receiverCity',   width: 16  },
     { header: 'Adresa Destinatar', key: 'receiverAddr',   width: 32  },
+    { header: 'Livrare',           key: 'delivery',       width: 12  },
     { header: 'Conținut',          key: 'content',        width: 30  },
     { header: 'Nr. bucăți',        key: 'nr_bucati',      width: 10  },
     { header: 'Greutate (kg)',     key: 'weight',         width: 13  },
     { header: 'Preț',              key: 'price',          width: 10  },
+    { header: 'Motiv preț',        key: 'priceNote',      width: 20  },
     { header: 'Plată',             key: 'payment',        width: 18  },
     { header: 'Șofer',             key: 'driver',         width: 18  },
   ]
@@ -51,6 +54,8 @@ export async function exportParcelsToExcel(
           ? 'La livrare — achitat'
           : 'La livrare'
 
+    const notWeighed = p.weight <= 0
+
     const row = sheet.addRow({
       id:           p.human_id,
       route:        `${getDestLabel(p.origin_code)} → ${getDestLabel(p.delivery_destination)}`,
@@ -60,11 +65,14 @@ export async function exportParcelsToExcel(
       senderAddr:   p.sender_details.address,
       receiver:     p.receiver_details.name,
       receiverPhone:p.receiver_details.phone2?.trim() ? `${p.receiver_details.phone} / ${p.receiver_details.phone2}` : p.receiver_details.phone,
+      receiverCity: p.receiver_details.city || '',
       receiverAddr: p.receiver_details.address,
+      delivery:     p.receiver_details.home_delivery ? 'Domiciliu' : '',
       content:      p.content_description || '',
       nr_bucati:    p.nr_bucati,
-      weight:       p.weight,
+      weight:       notWeighed ? '' : p.weight,
       price:        formatPrice(p.price, p.currency),
+      priceNote:    p.receiver_details.price_note || '',
       payment,
       driver:       getDriverName(p.driver_id),
     })
@@ -73,6 +81,14 @@ export async function exportParcelsToExcel(
     row.eachCell((cell) => {
       cell.alignment = { vertical: 'top', wrapText: true }
     })
+
+    // Colet necantarit: pret + greutate cu galben — de verificat / cantarit
+    if (notWeighed) {
+      const amberFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }
+      row.getCell('price').fill = amberFill
+      row.getCell('price').font = { bold: true, color: { argb: 'FFB45309' } }
+      row.getCell('weight').fill = amberFill
+    }
 
     // Auto row height based on longest wrapping cell (approx 15px per line)
     const maxLen = Math.max(

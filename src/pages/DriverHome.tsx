@@ -7,15 +7,16 @@ import {
   useMarkDelivered,
   useUpdateParcel,
 } from '../hooks/useParcels'
-import { formatPrice, getDestLabel, calculatePrice, matchesAddedDateTime, normalizePhone, cleanPhone2, hasPhoneNumber, compareBySeriesThenNumber } from '../lib/utils'
+import { formatPrice, getDestLabel, calcAutoPrice, matchesAddedDateTime, normalizePhone, cleanPhone2, hasPhoneNumber, compareBySeriesThenNumber } from '../lib/utils'
 import { exportCashReportToExcel } from '../lib/exportExcel'
 import { backdropClose } from '../lib/backdropClose'
-import type { Parcel } from '../lib/types'
+import type { Parcel, ContactDetails } from '../lib/types'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
 import AddPhotos from '../components/AddPhotos'
 import BackupPhone from '../components/ui/BackupPhone'
 import BackupPhoneEdit from '../components/ui/BackupPhoneEdit'
+import CityInput from '../components/ui/CityInput'
 
 // ── Phone icon SVG ──
 function PhoneIcon({ className = 'w-5 h-5' }: { className?: string }) {
@@ -605,8 +606,11 @@ function ParcelCard({
 }) {
   const isDelivered = parcel.status === 'delivered'
   const isCollection = parcel.record_type === 'collection'
-  const navAddress = isCollection ? parcel.sender_details.address : parcel.receiver_details.address
+  const navAddress = isCollection
+    ? parcel.sender_details.address
+    : [parcel.receiver_details.address, parcel.receiver_details.city].filter(Boolean).join(', ')
   const callPhone = isCollection ? parcel.sender_details.phone : parcel.receiver_details.phone
+  const notWeighed = !isCollection && parcel.weight <= 0
   return (
     <div
       className={`rounded-2xl overflow-hidden transition-all ${
@@ -675,6 +679,11 @@ function ParcelCard({
                     {parcel.labels.filter(l => l !== 'COLET' && l !== 'LIVRARE').join(', ')}
                   </span>
                 )}
+                {parcel.receiver_details.home_delivery && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-300">
+                    🏠 Domiciliu
+                  </span>
+                )}
               </div>
 
               {/* Row 2: Receiver name */}
@@ -682,17 +691,17 @@ function ParcelCard({
                 {parcel.receiver_details.name}
               </p>
 
-              {/* Row 3: Address */}
+              {/* Row 3: City + Address */}
               <p className="text-sm text-slate-400 truncate mt-0.5">
-                {parcel.receiver_details.address}
+                {[parcel.receiver_details.city, parcel.receiver_details.address].filter(Boolean).join(' — ')}
               </p>
 
               {/* Row 4: Weight + Price + Payment */}
               <div className="flex items-center gap-3 mt-2">
-                <span className="text-xs font-medium text-slate-400">
-                  {parcel.weight} kg
+                <span className={`text-xs font-medium ${notWeighed ? 'text-amber-600 font-bold' : 'text-slate-400'}`}>
+                  {notWeighed ? '⚠ necântărit' : `${parcel.weight} kg`}
                 </span>
-                <span className="text-sm font-bold text-emerald-700">
+                <span className={`text-sm font-bold ${notWeighed ? 'text-amber-600' : 'text-emerald-700'}`}>
                   {formatPrice(parcel.price, parcel.currency)}
                 </span>
                 {(parcel.payment_status === 'paid' || parcel.cash_collected) ? (
@@ -767,8 +776,8 @@ function ParcelDetailModal({
   onClose: () => void
   onEdit: () => void
   onSave: (updates: {
-    sender_details?: { name: string; phone: string; phone2?: string; address: string }
-    receiver_details?: { name: string; phone: string; phone2?: string; address: string }
+    sender_details?: ContactDetails
+    receiver_details?: ContactDetails
     content_description?: string | null
     nr_bucati?: number
     weight?: number
@@ -787,6 +796,7 @@ function ParcelDetailModal({
   const [receiverPhone, setReceiverPhone] = useState(parcel.receiver_details.phone)
   const [receiverPhone2, setReceiverPhone2] = useState(parcel.receiver_details.phone2)
   const [receiverAddress, setReceiverAddress] = useState(parcel.receiver_details.address)
+  const [receiverCity, setReceiverCity] = useState(parcel.receiver_details.city ?? '')
   const [contentDesc, setContentDesc] = useState(parcel.content_description || '')
   const [nrBucati, setNrBucati] = useState(parcel.nr_bucati)
   const [weight, setWeight] = useState(parcel.weight)
@@ -806,9 +816,11 @@ function ParcelDetailModal({
 
   function handleSave() {
     if (!canSave) return
+    // Spread pe detaliile existente ca sa nu pierdem campurile extra din jsonb
+    // (city, home_delivery, price_note)
     onSave({
-      sender_details: { name: senderName, phone: senderPhone, phone2: cleanPhone2(senderPhone2), address: senderAddress },
-      receiver_details: { name: receiverName, phone: receiverPhone, phone2: cleanPhone2(receiverPhone2), address: receiverAddress },
+      sender_details: { ...parcel.sender_details, name: senderName, phone: senderPhone, phone2: cleanPhone2(senderPhone2), address: senderAddress },
+      receiver_details: { ...parcel.receiver_details, name: receiverName, phone: receiverPhone, phone2: cleanPhone2(receiverPhone2), address: receiverAddress, city: receiverCity.trim() || undefined },
       content_description: contentDesc || null,
       nr_bucati: nrBucati,
       weight,
@@ -870,6 +882,7 @@ function ParcelDetailModal({
               <input className={inputCls} value={receiverName} onChange={(e) => setReceiverName(e.target.value)} placeholder="Nume destinatar" />
               <input className={inputCls} value={receiverPhone} onChange={(e) => setReceiverPhone(e.target.value)} placeholder="Telefon destinatar" />
               <BackupPhoneEdit value={receiverPhone2} onChange={setReceiverPhone2} inputCls={inputCls} placeholder="Telefon rezervă destinatar" />
+              <CityInput country={parcel.delivery_destination} value={receiverCity} onChange={setReceiverCity} placeholder="Oraș destinatar" inputCls={inputCls} />
               <input className={inputCls} value={receiverAddress} onChange={(e) => setReceiverAddress(e.target.value)} placeholder="Adresă destinatar" />
 
               <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-1">Detalii colet</h3>
@@ -884,7 +897,7 @@ function ParcelDetailModal({
                   <input type="number" step="0.1" min="0" className={inputCls} value={weight} onChange={(e) => {
                     const w = Number(e.target.value)
                     setWeight(w)
-                    setManualPrice(calculatePrice(w, parcel.origin_code, parcel.delivery_destination))
+                    setManualPrice(calcAutoPrice(w, parcel.origin_code, parcel.delivery_destination, parcel.receiver_details.home_delivery))
                   }} />
                 </div>
               </div>
@@ -953,8 +966,13 @@ function ParcelDetailModal({
                   {parcel.receiver_details.name}
                 </p>
                 <p className="text-sm text-slate-500 mb-3">
-                  {parcel.receiver_details.address}
+                  {[parcel.receiver_details.city, parcel.receiver_details.address].filter(Boolean).join(' — ')}
                 </p>
+                {parcel.receiver_details.home_delivery && (
+                  <span className="inline-block mb-3 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-300">
+                    🏠 Livrare la domiciliu
+                  </span>
+                )}
                 <div className="flex items-center gap-2 flex-wrap">
                   <a
                     href={`tel:${parcel.receiver_details.phone}`}
@@ -1007,13 +1025,15 @@ function ParcelDetailModal({
 
               {/* Details grid */}
               <div className="grid grid-cols-3 gap-2.5">
-                <div className="rounded-2xl p-3 text-center border border-card-border">
+                <div className={`rounded-2xl p-3 text-center border ${parcel.weight <= 0 ? 'bg-amber-50 border-amber-300' : 'border-card-border'}`}>
                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Greutate</p>
-                  <p className="text-lg font-extrabold text-slate-800">{parcel.weight} kg</p>
+                  <p className={`text-lg font-extrabold ${parcel.weight <= 0 ? 'text-amber-600 text-sm' : 'text-slate-800'}`}>
+                    {parcel.weight <= 0 ? '⚠ necântărit' : `${parcel.weight} kg`}
+                  </p>
                 </div>
-                <div className="rounded-2xl p-3 text-center border border-card-border">
+                <div className={`rounded-2xl p-3 text-center border ${parcel.weight <= 0 ? 'bg-amber-50 border-amber-300' : 'border-card-border'}`}>
                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Preț</p>
-                  <p className="text-lg font-extrabold text-emerald-700">
+                  <p className={`text-lg font-extrabold ${parcel.weight <= 0 ? 'text-amber-600' : 'text-emerald-700'}`}>
                     {formatPrice(parcel.price, parcel.currency)}
                   </p>
                 </div>
@@ -1022,6 +1042,13 @@ function ParcelDetailModal({
                   <p className="text-base font-bold text-slate-800">{parcel.nr_bucati ?? 1}</p>
                 </div>
               </div>
+
+              {parcel.receiver_details.price_note && (
+                <div className="rounded-2xl p-3.5 bg-violet-50 border border-violet-200">
+                  <p className="text-[10px] font-bold text-violet-500 uppercase mb-0.5">Motiv preț modificat</p>
+                  <p className="text-sm font-semibold text-violet-700">{parcel.receiver_details.price_note}</p>
+                </div>
+              )}
 
               {/* Plată */}
               <div className={`rounded-2xl p-3.5 border ${

@@ -19,7 +19,12 @@ export interface ParcelPrefill {
 }
 
 interface AddParcelWizardProps {
-  onComplete: (data: NewParcelData, links: { client_id?: string; client_address_id?: string }) => void
+  // addAnother = dupa salvare se incepe imediat un colet nou cu acelasi expeditor
+  onComplete: (
+    data: NewParcelData,
+    links: { client_id?: string; client_address_id?: string },
+    addAnother?: boolean
+  ) => void
   onCancel: () => void
   isSubmitting: boolean
   routes: { origin: DestinationCode; destination: DestinationCode; label: string }[]
@@ -153,6 +158,7 @@ export default function AddParcelWizard({
     transfer_recipient?: string
     weight: number
     manual_price?: number
+    price_note?: string
     paid_mdl_amount?: number
   }) {
     updateData(details)
@@ -163,8 +169,8 @@ export default function AddParcelWizard({
     setStep(4)
   }
 
-  function handleConfirm() {
-    onComplete(data, { client_id: linkedClientId, client_address_id: linkedAddressId })
+  function handleConfirm(addAnother = false) {
+    onComplete(data, { client_id: linkedClientId, client_address_id: linkedAddressId }, addAnother)
   }
 
   return (
@@ -245,7 +251,8 @@ export default function AddParcelWizard({
         {step === 4 && (
           <StepConfirm
             data={data}
-            onConfirm={handleConfirm}
+            onConfirm={() => handleConfirm(false)}
+            onConfirmAndNext={() => handleConfirm(true)}
             isSubmitting={isSubmitting}
           />
         )}

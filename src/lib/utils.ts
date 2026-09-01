@@ -89,11 +89,28 @@ export function compareBySeriesThenNumber(a: SortableParcel, b: SortableParcel):
 }
 
 // ── Price calculation ──
-// UK routes: £1.5/kg  |  altele: €1.5/kg
+// Pana la 7 kg (inclusiv necantarit, weight=0): pret fix 10 (£ pe rutele UK, € altfel).
+// Peste 7 kg: 1.5/kg. Un colet cu weight=0 primeste tot 10, dar se afiseaza
+// cu galben peste tot (necantarit — necesita atentie).
+
+export const FLAT_PRICE_MAX_KG = 7
+export const FLAT_PRICE = 10
+export const HOME_DELIVERY_FEE = 10
 
 export function calculatePrice(weightKg: number, _origin: DestinationCode, _destination: DestinationCode): number {
+  if (weightKg <= FLAT_PRICE_MAX_KG) return FLAT_PRICE
   const rate = 1.5
   return Math.round(weightKg * rate * 100) / 100
+}
+
+// Pretul automat complet: baza dupa kg + taxa de livrare la domiciliu (daca e cazul)
+export function calcAutoPrice(
+  weightKg: number,
+  origin: DestinationCode,
+  destination: DestinationCode,
+  homeDelivery?: boolean
+): number {
+  return calculatePrice(weightKg, origin, destination) + (homeDelivery ? HOME_DELIVERY_FEE : 0)
 }
 
 export function getCurrency(origin: DestinationCode, destination: DestinationCode): 'GBP' | 'EUR' {

@@ -33,6 +33,11 @@ export interface ContactDetails {
   phone: string
   phone2?: string   // numar de rezerva (optional) — unii clienti dau 2 numere
   address: string
+  city?: string     // oras (normalizat din lista de orase) — pt filtrare in Excel
+  // Campurile de mai jos sunt la nivel de COLET dar traiesc in receiver_details
+  // (jsonb) ca sa nu ceara migrare de schema in Supabase:
+  home_delivery?: boolean // livrare la domiciliu in MD (+10) — doar pe receiver_details
+  price_note?: string     // motivul pretului manual (ex: "telefon +20") — doar pe receiver_details
 }
 
 export interface Parcel {
@@ -82,6 +87,7 @@ export interface NewParcelData {
   transfer_recipient?: string
   weight: number
   manual_price?: number
+  price_note?: string                    // motivul pretului manual (obligatoriu cand se scoate AUTO)
   paid_mdl_amount?: number               // suma in lei daca au platit in MDL
   photos: File[]
 }

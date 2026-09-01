@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Parcel, NewParcelData, NewCollectionData, Profile, DriverRouteInput } from '../lib/types'
+import type { Parcel, NewParcelData, NewCollectionData, Profile, DriverRouteInput, ContactDetails } from '../lib/types'
 import { getParcelAllPhotoPaths, batchPrefetchSignedUrls } from './usePhotoUrl'
 import { compressImage } from '../lib/compressImage'
 import {
-  calculatePrice,
+  calcAutoPrice,
   getCurrency,
   buildHumanId,
   getCurrentWeekId,
@@ -306,8 +306,20 @@ export function useAddParcel(driverId: string) {
 
       const numericId = nextId as number
       const humanId = buildHumanId(parcelData.origin_code, parcelData.delivery_destination, numericId)
-      const price = parcelData.manual_price ?? calculatePrice(parcelData.weight, parcelData.origin_code, parcelData.delivery_destination)
+      const price = parcelData.manual_price ?? calcAutoPrice(
+        parcelData.weight,
+        parcelData.origin_code,
+        parcelData.delivery_destination,
+        parcelData.receiver_details.home_delivery
+      )
       const currency = getCurrency(parcelData.origin_code, parcelData.delivery_destination)
+
+      // Motivul pretului manual traieste in receiver_details (jsonb) — nu exista
+      // coloana separata in tabela si nu vrem migrare de schema
+      const receiverDetails = {
+        ...parcelData.receiver_details,
+        ...(parcelData.price_note?.trim() ? { price_note: parcelData.price_note.trim() } : {}),
+      }
 
       // 2. Upload poze (1-3) — fiecare cu UUID unic ca nume de fisier
       const parcelId = crypto.randomUUID()
@@ -339,7 +351,7 @@ export function useAddParcel(driverId: string) {
         origin_code: parcelData.origin_code,
         delivery_destination: parcelData.delivery_destination,
         sender_details: parcelData.sender_details,
-        receiver_details: parcelData.receiver_details,
+        receiver_details: receiverDetails,
         content_description: parcelData.content_description || null,
         nr_bucati: parcelData.nr_bucati,
         payment_status: parcelData.payment_status,
@@ -500,8 +512,8 @@ export function useUpdateParcel() {
     }: {
       parcel: Parcel
       updates: {
-        sender_details?: { name: string; phone: string; phone2?: string; address: string }
-        receiver_details?: { name: string; phone: string; phone2?: string; address: string }
+        sender_details?: ContactDetails
+        receiver_details?: ContactDetails
         content_description?: string | null
         nr_bucati?: number
         weight?: number

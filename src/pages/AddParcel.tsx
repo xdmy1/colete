@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useAddParcel, useAllDrivers, useDriverRoutes, useAllDriverRoutes } from '../hooks/useParcels'
@@ -18,6 +18,19 @@ export default function AddParcel() {
   const upsertClient = useUpsertClientWithAddress()
 
   const [adminSelectedDriver, setAdminSelectedDriver] = useState<string | null>(null)
+
+  // Lant de colete cu acelasi expeditor: dupa "Salvează + alt colet" wizard-ul
+  // se remonteaza (wizardKey) cu expeditorul + ruta prefill-uite, fara sa mai
+  // fie introduse datele expeditorului inca o data.
+  const [chainPrefill, setChainPrefill] = useState<ParcelPrefill | null>(null)
+  const [wizardKey, setWizardKey] = useState(0)
+  const [savedToast, setSavedToast] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!savedToast) return
+    const t = setTimeout(() => setSavedToast(null), 4000)
+    return () => clearTimeout(t)
+  }, [savedToast])
 
   const effectiveDriverId = isAdmin ? adminSelectedDriver : profile?.id || null
 
@@ -51,7 +64,8 @@ export default function AddParcel() {
 
   async function handleComplete(
     data: NewParcelData,
-    links: { client_id?: string; client_address_id?: string }
+    links: { client_id?: string; client_address_id?: string },
+    addAnother?: boolean
   ) {
     if (!effectiveDriverId) {
       alert('Niciun șofer selectat!')
@@ -81,8 +95,23 @@ export default function AddParcel() {
         console.warn('[ADD] upsert client esuat, salvez coletul fara legatura:', clientErr)
       }
 
-      await addParcel.mutateAsync({ ...data, client_id: clientId, client_address_id: clientAddressId })
-      navigate('/')
+      const saved = await addParcel.mutateAsync({ ...data, client_id: clientId, client_address_id: clientAddressId })
+
+      if (addAnother) {
+        // Colet nou din numele aceluiasi expeditor: pastram expeditorul + ruta,
+        // destinatarul / greutatea / pozele se iau de la zero
+        setChainPrefill({
+          sender: data.sender_details,
+          origin_code: data.origin_code,
+          delivery_destination: data.delivery_destination,
+          client_id: clientId,
+        })
+        setWizardKey((k) => k + 1)
+        setSavedToast(`Colet ${saved.human_id} salvat ✓`)
+        window.scrollTo(0, 0)
+      } else {
+        navigate('/')
+      }
     } catch (err: any) {
       const msg = err?.message || err?.error_description || JSON.stringify(err)
       console.error('Eroare la salvarea coletului:', msg, err)
@@ -147,13 +176,23 @@ export default function AddParcel() {
   }
 
   return (
-    <AddParcelWizard
-      onComplete={handleComplete}
-      onCancel={() => navigate('/')}
-      isSubmitting={addParcel.isPending || upsertClient.isPending}
-      routes={availableRoutes}
-      driverId={effectiveDriverId || ''}
-      prefill={prefill}
-    />
+    <>
+      {savedToast && (
+        <div className="fixed top-16 inset-x-0 z-50 flex justify-center pointer-events-none">
+          <div className="bg-emerald-600 text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-lg">
+            {savedToast}
+          </div>
+        </div>
+      )}
+      <AddParcelWizard
+        key={wizardKey}
+        onComplete={handleComplete}
+        onCancel={() => navigate('/')}
+        isSubmitting={addParcel.isPending || upsertClient.isPending}
+        routes={availableRoutes}
+        driverId={effectiveDriverId || ''}
+        prefill={chainPrefill ?? prefill}
+      />
+    </>
   )
 }

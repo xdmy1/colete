@@ -240,7 +240,7 @@ export default function Archive() {
                         {getDriverName(parcel.driver_id)}
                       </span>
                     </div>
-                    <span className="text-sm font-bold text-emerald-700 whitespace-nowrap ml-2">
+                    <span className={`text-sm font-bold whitespace-nowrap ml-2 ${parcel.weight <= 0 ? 'text-amber-600' : 'text-emerald-700'}`}>
                       {formatPrice(parcel.price, parcel.currency)}
                     </span>
                   </div>
@@ -356,7 +356,7 @@ function ArchiveParcelModal({
             <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold border border-blue-200">
               {paymentLabel(parcel.payment_status)}
             </span>
-            <span className="text-base font-bold text-emerald-700 ml-auto">
+            <span className={`text-base font-bold ml-auto ${parcel.weight <= 0 ? 'text-amber-600' : 'text-emerald-700'}`}>
               {formatPrice(parcel.price, parcel.currency)}
             </span>
           </div>
@@ -427,7 +427,14 @@ function ArchiveParcelModal({
                 {parcel.content_description && (
                   <p className="text-xs text-slate-500">Conținut: {parcel.content_description}</p>
                 )}
-                <p className="text-xs text-slate-500">Greutate: {parcel.weight} kg</p>
+                {parcel.weight <= 0 ? (
+                  <p className="text-xs font-bold text-amber-600">Greutate: ⚠ necântărit</p>
+                ) : (
+                  <p className="text-xs text-slate-500">Greutate: {parcel.weight} kg</p>
+                )}
+                {parcel.receiver_details.price_note && (
+                  <p className="text-xs font-bold text-violet-600">Motiv preț: {parcel.receiver_details.price_note}</p>
+                )}
               </div>
 
               {parcel.delivered_at && (

@@ -162,19 +162,20 @@ export default function StepDetails({
 
   // Livrarea la domiciliu exista doar pentru coletele care VIN spre Moldova
   const canHomeDelivery = deliveryDestination === 'MD'
-  // Spre MD adresa e obligatorie doar la livrare la domiciliu;
-  // pe celelalte rute ramane obligatorie ca pana acum
-  const addressRequired = canHomeDelivery ? homeDelivery : true
 
   // Telefonul trebuie sa aiba cifre, nu doar prefixul (ex: "+373 " singur nu e valid)
   const senderPhoneOk = hasPhoneNumber(sender.phone, PHONE_PREFIX[originCode])
   const receiverPhoneOk = hasPhoneNumber(receiver.phone, PHONE_PREFIX[deliveryDestination])
 
+  // Ori oras, ori adresa — nu ambele obligatorii. Doar la livrare la domiciliu
+  // adresa e obligatorie (acolo chiar se livreaza la usa).
+  const hasCityOrAddress = !!(receiver.city ?? '').trim() || !!receiver.address.trim()
+
   const missing = [
     !receiverPhoneOk && 'telefon destinatar',
     !receiver.name.trim() && 'nume destinatar',
-    !(receiver.city ?? '').trim() && 'oraș destinatar',
-    addressRequired && !receiver.address.trim() && (homeDelivery ? 'adresă livrare domiciliu' : 'adresă destinatar'),
+    !hasCityOrAddress && 'oraș sau adresă destinatar',
+    homeDelivery && !receiver.address.trim() && 'adresă livrare domiciliu',
     !senderPhoneOk && 'telefon expeditor',
     !sender.name.trim() && 'nume expeditor',
     !priceAuto && !priceNote.trim() && 'motivul prețului modificat',
@@ -284,7 +285,7 @@ export default function StepDetails({
           country={deliveryDestination}
           value={receiver.city ?? ''}
           onChange={(city) => setReceiver({ ...receiver, city })}
-          placeholder="Oraș destinatar *"
+          placeholder="Oraș destinatar (oraș sau adresă) *"
           inputCls={inputCls}
         />
         {canHomeDelivery && (
@@ -310,7 +311,7 @@ export default function StepDetails({
         )}
         <input
           type="text"
-          placeholder={homeDelivery ? 'Adresa livrare la domiciliu *' : addressRequired ? 'Adresa destinatar *' : 'Adresa destinatar (opțional)'}
+          placeholder={homeDelivery ? 'Adresa livrare la domiciliu *' : 'Adresa destinatar (oraș sau adresă)'}
           value={receiver.address}
           onChange={(e) => setReceiver({ ...receiver, address: e.target.value })}
           className={inputCls}

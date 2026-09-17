@@ -1,7 +1,18 @@
 import ExcelJS from 'exceljs'
-import type { Parcel } from './types'
+import type { ContactDetails, Parcel } from './types'
 import { getDestLabel, formatPrice } from './utils'
 import { getPhotoUrl } from '../hooks/usePhotoUrl'
+
+// Ori orasul, ori adresa exacta — o singura coloana in Excel, ca sa nu fie
+// nevoie de mutat manual date dintr-o coloana in alta.
+function placeOf(c: ContactDetails): string {
+  const city = (c.city ?? '').trim()
+  const addr = (c.address ?? '').trim()
+  if (!addr) return city
+  if (!city) return addr
+  // adresa exacta contine deja orasul -> nu-l mai repeta
+  return addr.toLowerCase().includes(city.toLowerCase()) ? addr : `${city}, ${addr}`
+}
 
 export async function exportParcelsToExcel(
   parcels: Parcel[],
@@ -21,8 +32,7 @@ export async function exportParcelsToExcel(
     { header: 'Adresa Expeditor',  key: 'senderAddr',     width: 32  },
     { header: 'Destinatar',        key: 'receiver',       width: 24  },
     { header: 'Tel. Destinatar',   key: 'receiverPhone',  width: 16  },
-    { header: 'Oraș',              key: 'receiverCity',   width: 16  },
-    { header: 'Adresa Destinatar', key: 'receiverAddr',   width: 32  },
+    { header: 'Adresa Destinatar', key: 'receiverAddr',   width: 38  },
     { header: 'Livrare',           key: 'delivery',       width: 12  },
     { header: 'Conținut',          key: 'content',        width: 30  },
     { header: 'Nr. bucăți',        key: 'nr_bucati',      width: 10  },
@@ -62,11 +72,10 @@ export async function exportParcelsToExcel(
       photo:        '',
       sender:       p.sender_details.name,
       senderPhone:  p.sender_details.phone2?.trim() ? `${p.sender_details.phone} / ${p.sender_details.phone2}` : p.sender_details.phone,
-      senderAddr:   p.sender_details.address,
+      senderAddr:   placeOf(p.sender_details),
       receiver:     p.receiver_details.name,
       receiverPhone:p.receiver_details.phone2?.trim() ? `${p.receiver_details.phone} / ${p.receiver_details.phone2}` : p.receiver_details.phone,
-      receiverCity: p.receiver_details.city || '',
-      receiverAddr: p.receiver_details.address,
+      receiverAddr: placeOf(p.receiver_details),
       delivery:     p.receiver_details.home_delivery ? 'Domiciliu' : '',
       content:      p.content_description || '',
       nr_bucati:    p.nr_bucati,
@@ -92,8 +101,8 @@ export async function exportParcelsToExcel(
 
     // Auto row height based on longest wrapping cell (approx 15px per line)
     const maxLen = Math.max(
-      p.sender_details.address.length,
-      p.receiver_details.address.length,
+      placeOf(p.sender_details).length,
+      placeOf(p.receiver_details).length,
       (p.content_description || '').length,
     )
     const lines = Math.max(1, Math.ceil(maxLen / 35))

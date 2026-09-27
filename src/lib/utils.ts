@@ -193,11 +193,42 @@ export function phoneNationalDigits(
 }
 
 // Minim de cifre ca sa consideram un numar completat (fara codul de tara).
-// Nu exista numar real mai scurt de atat — prinde campurile lasate doar cu prefix.
+// Folosit doar pt coduri de tara pe care nu le cunoastem (vezi PHONE_RULES).
 export const MIN_PHONE_DIGITS = 5
 
+// Cate cifre trebuie sa aiba numarul DUPA codul de tara (fara 0-ul din fata).
+// Ex: Moldova +373 xx xx xx xx = 8 cifre. Germania are si mobile de 11 cifre (015x).
+export const PHONE_RULES: Record<string, { digits: number[]; format: string; country: string }> = {
+  '373': { digits: [8], format: 'xx xx xx xx', country: 'Moldova' },
+  '44': { digits: [10], format: 'xx xx xx xx xx', country: 'UK' },
+  '32': { digits: [9], format: 'xxx xx xx xx', country: 'Belgia' },
+  '31': { digits: [9], format: 'x xx xx xx xx', country: 'Olanda' },
+  '49': { digits: [10, 11], format: 'xxx xxxxxxx', country: 'Germania' },
+}
+
+// Sparge valoarea in cod de tara + cifrele numarului. "+373 60123456" → 373 / 60123456.
+// Fara spatiu (numar lipit / vechi) cautam un cod cunoscut la inceput, apoi prefixul.
+function splitCountryCode(phone: string | null | undefined, prefix?: string): { code: string; digits: string } {
+  const value = (phone ?? '').trim()
+  const idx = value.indexOf(' ')
+  if (idx >= 0) return { code: normalizePhone(value.slice(0, idx)), digits: normalizePhone(value.slice(idx + 1)) }
+  const all = normalizePhone(value)
+  const code = Object.keys(PHONE_RULES).find((c) => all.startsWith(c)) ?? normalizePhone(prefix)
+  return { code, digits: code && all.startsWith(code) ? all.slice(code.length) : all }
+}
+
+// Mesaj de eroare pt numar gresit, sau null daca e ok
+export function phoneFormatError(phone: string | null | undefined, prefix?: string): string | null {
+  const { code, digits: raw } = splitCountryCode(phone, prefix)
+  const digits = raw.replace(/^0+/, '')
+  const rule = PHONE_RULES[code]
+  if (!rule) return digits.length >= MIN_PHONE_DIGITS ? null : `minim ${MIN_PHONE_DIGITS} cifre`
+  if (rule.digits.includes(digits.length)) return null
+  return `${rule.country}: ${rule.digits.join(' sau ')} cifre (${rule.format}) — ai ${digits.length}`
+}
+
 export function hasPhoneNumber(phone: string | null | undefined, prefix?: string): boolean {
-  return phoneNationalDigits(phone, prefix).length >= MIN_PHONE_DIGITS
+  return phoneFormatError(phone, prefix) === null
 }
 
 // Numarul de rezerva (al doilea telefon): pastreaza-l doar daca are cifre,

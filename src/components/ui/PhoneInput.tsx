@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes } from 'react'
+import { phoneFormatError } from '../../lib/utils'
 
 // Input pentru numere de telefon cu cod tara editabil + numar separat.
 // Doua inputuri vizibil distincte cu gap CSS intre ele.
@@ -43,26 +44,32 @@ export default function PhoneInput({
     onChange(`${newCode} ${newDigits}`)
   }
 
+  // Avertizare doar dupa ce s-a inceput scrierea numarului
+  const formatError = digits.replace(/\D/g, '') ? phoneFormatError(effectiveValue, prefix) : null
+
   return (
-    <div className={`flex items-stretch gap-2 ${className ?? ''}`}>
-      <input
-        type="tel"
-        inputMode="tel"
-        aria-label="Cod tara"
-        value={code}
-        onChange={(e) => emit(e.target.value.trim(), digits)}
-        className="w-20 px-3 rounded-xl bg-pill-green-bg border border-pill-green-border text-emerald-700 font-bold text-base text-center focus:outline-none focus:ring-1 focus:ring-pill-green-border"
-      />
-      <input
-        type="tel"
-        inputMode="numeric"
-        autoComplete="tel-national"
-        placeholder={placeholder}
-        value={digits}
-        onChange={(e) => emit(code, stripLeadingZero(e.target.value))}
-        className={inputCls ?? defaultInputCls}
-        {...rest}
-      />
+    <div className={className}>
+      <div className="flex items-stretch gap-2">
+        <input
+          type="tel"
+          inputMode="tel"
+          aria-label="Cod tara"
+          value={code}
+          onChange={(e) => emit(e.target.value.trim(), digits)}
+          className="w-20 px-3 rounded-xl bg-pill-green-bg border border-pill-green-border text-emerald-700 font-bold text-base text-center focus:outline-none focus:ring-1 focus:ring-pill-green-border"
+        />
+        <input
+          type="tel"
+          inputMode="numeric"
+          autoComplete="tel-national"
+          placeholder={placeholder}
+          value={digits}
+          onChange={(e) => emit(code, stripLeadingZero(e.target.value))}
+          className={inputCls ?? defaultInputCls}
+          {...rest}
+        />
+      </div>
+      {formatError && <p className="mt-1 text-xs font-semibold text-red-600">{formatError}</p>}
     </div>
   )
 }

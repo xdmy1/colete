@@ -16,7 +16,7 @@
 // Securitate: apelantul trebuie autentificat (JWT in Authorization) SI role='admin'.
 
 import { createClient } from '@supabase/supabase-js'
-import { PIN_ERROR, isValidPin, pinToPassword } from '../src/lib/pin'
+import { PIN_ERROR, isValidPin, pinToPassword } from '../src/lib/pin.js'
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || ''
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''

@@ -23,6 +23,7 @@ import type { DestinationCode } from '../lib/utils'
 import { exportParcelsToExcel, exportCashReportToExcel } from '../lib/exportExcel'
 import { backdropClose } from '../lib/backdropClose'
 import type { Parcel, Profile, DriverRouteInput, ContactDetails } from '../lib/types'
+import { PIN_LENGTH, PIN_ERROR, isValidPin } from '../lib/pin'
 import Layout from '../components/Layout'
 import ParcelPhoto from '../components/ParcelPhoto'
 import AddPhotos from '../components/AddPhotos'
@@ -1790,8 +1791,8 @@ function DriverAddForm({ onDone }: { onDone: () => void }) {
       setError('Nume invalid (litere mici, cifre, _; minim 2 caractere)')
       return
     }
-    if (!/^\d{4,}$/.test(trimmedPin)) {
-      setError('PIN invalid (minim 4 cifre)')
+    if (!isValidPin(trimmedPin)) {
+      setError(PIN_ERROR)
       return
     }
     const parsed = parseRouteDrafts(drafts)
@@ -1837,8 +1838,9 @@ function DriverAddForm({ onDone }: { onDone: () => void }) {
           type="text"
           inputMode="numeric"
           value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-          placeholder="4 cifre"
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH))}
+          placeholder={`${PIN_LENGTH} cifre`}
+          maxLength={PIN_LENGTH}
           className={driverInputCls}
         />
       </div>
@@ -1959,8 +1961,8 @@ function DriverManagerRow({
       setError('Nume invalid (litere mici, cifre, _; minim 2 caractere)')
       return
     }
-    if (!/^\d{4,}$/.test(trimmedPin)) {
-      setError('PIN invalid (minim 4 cifre)')
+    if (pinChanged && !isValidPin(trimmedPin)) {
+      setError(PIN_ERROR)
       return
     }
 
@@ -2030,7 +2032,8 @@ function DriverManagerRow({
           type="text"
           inputMode="numeric"
           value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH))}
+          maxLength={PIN_LENGTH}
           className={driverInputCls}
         />
       </div>

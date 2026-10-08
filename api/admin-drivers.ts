@@ -1,11 +1,14 @@
 // Vercel Serverless Function: POST /api/admin-drivers
-// Adaugare + stergere de soferi (actiuni care ating auth.users, deci cer service_role).
+// Adaugare + editare (nume/PIN) + stergere de soferi — actiuni care ating
+// auth.users, deci cer service_role.
 //
 // De ce sta aici si nu in supabase/functions:
 //   deploy-ul unei Edge Function cere un Personal Access Token de Supabase;
 //   functiile de pe Vercel se deployeaza automat la fiecare push, fara pas manual.
-//   `admin-update-driver` (schimbare nume/PIN) a ramas Edge Function — e deja
-//   deployata si functionala.
+//
+// PIN-ul are 4 cifre, dar Supabase Auth refuza parole sub 6 caractere, asa ca
+// parola de login e derivata din PIN cu `pinToPassword` (src/lib/pin.ts) —
+// aceeasi functie e folosita si la login (useAuth).
 //
 // Env necesar (setat in proiectul Vercel):
 //   VITE_SUPABASE_URL / SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
@@ -13,6 +16,7 @@
 // Securitate: apelantul trebuie autentificat (JWT in Authorization) SI role='admin'.
 
 import { createClient } from '@supabase/supabase-js'
+import { PIN_ERROR, isValidPin, pinToPassword } from '../src/lib/pin'
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || ''
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
@@ -125,6 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const action = body?.action
 
     if (action === 'create') return await createDriver(admin, body!, res)
+    if (action === 'update') return await updateDriver(admin, body!, res)
     if (action === 'delete') return await deleteDriver(admin, body!, caller.id, res)
     return res.status(400).json({ error: 'Acțiune necunoscută' })
   } catch (err) {
@@ -147,8 +152,8 @@ async function createDriver(
   if (!/^[a-z0-9_]{2,}$/.test(username)) {
     return res.status(400).json({ error: 'Nume invalid (doar litere mici, cifre, _; minim 2 caractere)' })
   }
-  if (!/^\d{4,}$/.test(pin)) {
-    return res.status(400).json({ error: 'PIN invalid (minim 4 cifre)' })
+  if (!isValidPin(pin)) {
+    return res.status(400).json({ error: PIN_ERROR })
   }
   const routeErr = validateRoutes(routes)
   if (routeErr) {
@@ -176,7 +181,7 @@ async function createDriver(
 
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email: `${username}@colete.local`,
-    password: pin,
+    password: pinToPassword(pin),
     email_confirm: true,
   })
   if (createErr || !created?.user) {
@@ -206,6 +211,91 @@ async function createDriver(
   }
 
   return res.status(200).json({ success: true, driverId })
+}
+
+// ── UPDATE: schimba numele si/sau PIN-ul unui sofer.
+// Numele formeaza email-ul de login, PIN-ul e parola, deci auth.users si
+// profiles se actualizeaza impreuna (cu service role).
+async function updateDriver(
+  admin: ReturnType<typeof createClient>,
+  body: Record<string, unknown>,
+  res: VercelResponse
+) {
+  const driverId = typeof body.driverId === 'string' ? body.driverId : ''
+  const newUsername =
+    typeof body.username === 'string' ? body.username.trim().toLowerCase() : undefined
+  const newPin = typeof body.pin === 'string' ? body.pin.trim() : undefined
+
+  if (!driverId) {
+    return res.status(400).json({ error: 'Lipsește driverId' })
+  }
+  if (newUsername === undefined && newPin === undefined) {
+    return res.status(400).json({ error: 'Nimic de modificat' })
+  }
+  if (newUsername !== undefined && !/^[a-z0-9_]{2,}$/.test(newUsername)) {
+    return res.status(400).json({ error: 'Nume invalid (doar litere mici, cifre, _; minim 2 caractere)' })
+  }
+  if (newPin !== undefined && !isValidPin(newPin)) {
+    return res.status(400).json({ error: PIN_ERROR })
+  }
+
+  const { data: target } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('id', driverId)
+    .maybeSingle()
+  if (!target) {
+    return res.status(404).json({ error: 'Șoferul nu există' })
+  }
+
+  if (newUsername !== undefined) {
+    const { data: clash } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('username', newUsername)
+      .neq('id', driverId)
+      .maybeSingle()
+    if (clash) {
+      return res.status(409).json({ error: 'Numele este deja folosit de alt șofer' })
+    }
+  }
+  if (newPin !== undefined) {
+    const { data: pinClash } = await admin
+      .from('profiles')
+      .select('username')
+      .eq('pin_code', newPin)
+      .neq('id', driverId)
+      .maybeSingle()
+    if (pinClash) {
+      return res.status(409).json({ error: `PIN-ul este deja folosit de "${pinClash.username}"` })
+    }
+  }
+
+  const authUpdates: { email?: string; email_confirm?: boolean; password?: string } = {}
+  if (newUsername !== undefined) {
+    authUpdates.email = `${newUsername}@colete.local`
+    authUpdates.email_confirm = true
+  }
+  if (newPin !== undefined) authUpdates.password = pinToPassword(newPin)
+
+  const { error: authUpdErr } = await admin.auth.admin.updateUserById(driverId, authUpdates)
+  if (authUpdErr) {
+    return res.status(500).json({ error: `Eroare auth: ${authUpdErr.message}` })
+  }
+
+  const profileUpdates: { username?: string; pin_code?: string } = {}
+  if (newUsername !== undefined) profileUpdates.username = newUsername
+  if (newPin !== undefined) profileUpdates.pin_code = newPin
+
+  const { error: profErr } = await admin.from('profiles').update(profileUpdates).eq('id', driverId)
+  if (profErr) {
+    // auth.users e deja actualizat dar profiles a esuat → desincronizare.
+    // Logam ca sa fie reparat manual; parola veche nu o mai stim.
+    console.error('admin-drivers update: profiles failed AFTER auth update — out of sync:', profErr)
+    return res.status(500).json({ error: `Eroare profil: ${profErr.message}` })
+  }
+
+  return res.status(200).json({ success: true })
 }
 
 // ── DELETE: sterge soferul (cascade pe profil + rute).

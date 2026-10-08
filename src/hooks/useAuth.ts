@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { pinToPassword } from '../lib/pin'
 import type { Profile } from '../lib/types'
 
 export function useAuth() {
@@ -56,18 +57,16 @@ export function useAuth() {
       return { error: 'Cod PIN invalid' }
     }
 
-    // Sign in using the username as email (convention: username@colete.local)
+    // Sign in using the username as email (convention: username@colete.local).
+    // Parola e derivata din PIN (vezi src/lib/pin.ts). Conturile vechi, setate
+    // manual in SQL cu crypt(pin), au parola = PIN-ul brut — incercam si asa.
     const email = `${profileData.username}@colete.local`
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password: pin,
-    })
-
-    if (signInError) {
-      return { error: 'Autentificare eșuată. Verifică codul PIN.' }
+    for (const password of [pinToPassword(pin), pin]) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      if (!signInError) return { error: null }
     }
 
-    return { error: null }
+    return { error: 'Autentificare eșuată. Verifică codul PIN.' }
   }
 
   async function logout() {

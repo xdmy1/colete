@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
-
-const PIN_LENGTH = 4
+import { PIN_LENGTH } from '../lib/pin'
 
 export default function Login() {
   const { loginWithPin } = useAuth()

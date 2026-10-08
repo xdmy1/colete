@@ -78,26 +78,10 @@ export function useAllDrivers() {
   })
 }
 
-// Apeleaza o Edge Function de admin si normalizeaza erorile.
-// functions.invoke NU arunca pe status 4xx/5xx — mesajul real vine in body.
-async function invokeAdminFn<T>(name: string, body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(name, { body })
-  if (error) {
-    const ctx = (error as { context?: Response }).context
-    if (ctx && typeof ctx.json === 'function') {
-      const payload = await ctx.json().catch(() => null)
-      throw new Error(payload?.error || error.message)
-    }
-    throw new Error(error.message)
-  }
-  if (data?.error) throw new Error(data.error)
-  return data as T
-}
-
 // ADMIN: schimba numele (username) si/sau PIN-ul unui sofer.
 // PIN-ul e si parola de login si username-ul formeaza email-ul, deci nu pot fi
-// schimbate doar in tabela `profiles` — apelam Edge Function `admin-update-driver`
-// care actualizeaza atomic auth.users + profiles cu service role.
+// schimbate doar in tabela `profiles` — endpoint-ul Vercel actualizeaza
+// auth.users + profiles cu service role.
 export function useUpdateDriver() {
   const queryClient = useQueryClient()
 
@@ -110,7 +94,7 @@ export function useUpdateDriver() {
       driverId: string
       username?: string
       pin?: string
-    }) => invokeAdminFn<{ success: true }>('admin-update-driver', { driverId, username, pin }),
+    }) => invokeAdminApi<{ success: true }>('update', { driverId, username, pin }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drivers'] })
     },

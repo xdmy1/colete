@@ -289,7 +289,7 @@ export function useAddParcel(driverId: string) {
       }
 
       const numericId = nextId as number
-      const humanId = buildHumanId(parcelData.origin_code, parcelData.delivery_destination, numericId)
+      const humanId = buildHumanId(parcelData.origin_code, parcelData.delivery_destination, numericId, weekId)
       const price = parcelData.manual_price ?? calcAutoPrice(
         parcelData.weight,
         parcelData.origin_code,

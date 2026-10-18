@@ -44,16 +44,25 @@ export function getDestLabel(code: string) {
 export function buildHumanId(
   originCode: DestinationCode,
   deliveryDestination: DestinationCode,
-  numericId: number
+  numericId: number,
+  weekId: string = getCurrentWeekId()
 ): string {
   const foreignCountry = deliveryDestination !== 'MD' ? deliveryDestination : originCode
+  let base: string
   switch (foreignCountry) {
-    case 'BE': return `B${numericId}`
-    case 'NL': return `OL${numericId}`
-    case 'DE': return `D${numericId}`
-    default:   return `${numericId}`
+    case 'BE': base = `B${numericId}`; break
+    case 'NL': base = `OL${numericId}`; break
+    case 'DE': base = `D${numericId}`; break
+    default:   base = `${numericId}`
   }
+  return originCode === 'MD' && DUPLICATE_MD_WEEKS.includes(weekId) ? `${base}/1` : base
 }
+
+// Exceptie: coletele din MD de saptamana 2026-W42 n-au trecut vama si raman
+// nelivrate (nearhivate) in saptamana urmatoare. Ca sa nu se confunde cu cele noi
+// (aceleasi numere), coletele din MD inregistrate in W43 primesc sufixul /1:
+// 21 → 21/1, B21 → B21/1. Doar pentru saptamanile din lista.
+const DUPLICATE_MD_WEEKS = ['2026-W43']
 
 // ── Sortare colete: grupat pe SERIE (rută), apoi crescător după număr ──
 // Fiecare serie își are propria numerotare (B=Belgia, OL=Olanda, D=Germania,

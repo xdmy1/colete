@@ -9,6 +9,7 @@ import {
   buildHumanId,
   getCurrentWeekId,
 } from '../lib/utils'
+import { getContinuationFloor } from '../lib/numbering'
 
 // Coletele active (nearhivate) ale unui sofer
 export function useDriverParcels(driverId: string | undefined) {
@@ -288,8 +289,18 @@ export function useAddParcel(driverId: string) {
         throw idError
       }
 
-      const numericId = nextId as number
-      const humanId = buildHumanId(parcelData.origin_code, parcelData.delivery_destination, numericId, weekId)
+      let numericId = nextId as number
+
+      // Exceptie W43: coletele din MD continua numerotarea din W42 (vezi utils)
+      const floor = await getContinuationFloor(
+        driverId,
+        weekId,
+        parcelData.origin_code,
+        parcelData.delivery_destination
+      )
+      if (floor !== null && floor > numericId) numericId = floor
+
+      const humanId = buildHumanId(parcelData.origin_code, parcelData.delivery_destination, numericId)
       const price = parcelData.manual_price ?? calcAutoPrice(
         parcelData.weight,
         parcelData.origin_code,

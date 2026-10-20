@@ -44,25 +44,30 @@ export function getDestLabel(code: string) {
 export function buildHumanId(
   originCode: DestinationCode,
   deliveryDestination: DestinationCode,
-  numericId: number,
-  weekId: string = getCurrentWeekId()
+  numericId: number
 ): string {
   const foreignCountry = deliveryDestination !== 'MD' ? deliveryDestination : originCode
-  let base: string
   switch (foreignCountry) {
-    case 'BE': base = `B${numericId}`; break
-    case 'NL': base = `OL${numericId}`; break
-    case 'DE': base = `D${numericId}`; break
-    default:   base = `${numericId}`
+    case 'BE': return `B${numericId}`
+    case 'NL': return `OL${numericId}`
+    case 'DE': return `D${numericId}`
+    default:   return `${numericId}`
   }
-  return originCode === 'MD' && DUPLICATE_MD_WEEKS.includes(weekId) ? `${base}/1` : base
 }
 
 // Exceptie: coletele din MD de saptamana 2026-W42 n-au trecut vama si raman
-// nelivrate (nearhivate) in saptamana urmatoare. Ca sa nu se confunde cu cele noi
-// (aceleasi numere), coletele din MD inregistrate in W43 primesc sufixul /1:
-// 21 → 21/1, B21 → B21/1. Doar pentru saptamanile din lista.
-const DUPLICATE_MD_WEEKS = ['2026-W43']
+// nelivrate (nearhivate) in W43, iar numerotarea ar lua-o de la capat cu aceleasi
+// numere. Ca sa nu se confunde, in W43 coletele din MD CONTINUA numerotarea de
+// unde a ramas in W42 (ex: oficiu a ramas la 58 → W43 incepe de la 59).
+// Din W44 numerele revin la normal (de la inceputul range-ului).
+// Cheie = saptamana curenta, valoare = saptamana din care se continua.
+const MD_NUMBERING_CONTINUES_FROM: Record<string, string> = { '2026-W43': '2026-W42' }
+
+// Saptamana din care continua numerotarea, sau null daca numerotarea e normala
+export function getNumberingContinuationWeek(originCode: DestinationCode, weekId: string): string | null {
+  if (originCode !== 'MD') return null
+  return MD_NUMBERING_CONTINUES_FROM[weekId] ?? null
+}
 
 // ── Sortare colete: grupat pe SERIE (rută), apoi crescător după număr ──
 // Fiecare serie își are propria numerotare (B=Belgia, OL=Olanda, D=Germania,

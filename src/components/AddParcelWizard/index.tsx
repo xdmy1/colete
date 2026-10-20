@@ -3,6 +3,7 @@ import type { NewParcelData, ContactDetails } from '../../lib/types'
 import type { DestinationCode } from '../../lib/utils'
 import { getCurrentWeekId, weekIdParts, buildHumanId } from '../../lib/utils'
 import { supabase } from '../../lib/supabase'
+import { getContinuationFloor } from '../../lib/numbering'
 
 import StepDestination from './StepDestination'
 import StepDetails from './StepDetails'
@@ -127,7 +128,18 @@ export default function AddParcelWizard({
 
       const { data: rows } = await query
 
-      const nextNum = rows?.[0]?.numeric_id ? rows[0].numeric_id + 1 : range_start
+      let nextNum = rows?.[0]?.numeric_id ? rows[0].numeric_id + 1 : range_start
+
+      // Exceptie W43: coletele din MD continua numerotarea din W42 (vezi utils)
+      const floor = await getContinuationFloor(
+        driverId,
+        weekId,
+        data.origin_code,
+        data.delivery_destination,
+        { range_start, range_end, shared }
+      )
+      if (floor !== null && floor > nextNum) nextNum = floor
+
       setPreviewHumanId(buildHumanId(data.origin_code, data.delivery_destination, nextNum))
     }
 

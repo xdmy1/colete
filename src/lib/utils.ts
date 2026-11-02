@@ -60,13 +60,26 @@ export function buildHumanId(
 // numere. Ca sa nu se confunde, in W43 coletele din MD CONTINUA numerotarea de
 // unde a ramas in W42 (ex: oficiu a ramas la 58 → W43 incepe de la 59).
 // Din W44 numerele revin la normal (de la inceputul range-ului).
-// Cheie = saptamana curenta, valoare = saptamana din care se continua.
-const MD_NUMBERING_CONTINUES_FROM: Record<string, string> = { '2026-W43': '2026-W42' }
+// La fel in W45: doar coletele MD → Anglia din W44 n-au plecat, deci MD → UK
+// continua numerotarea din W44; celelalte rute pornesc normal.
+// Cheie = saptamana curenta; from = saptamana din care se continua;
+// destinations = doar aceste rute din MD (lipsa = toate).
+const MD_NUMBERING_CONTINUES_FROM: Record<string, { from: string; destinations?: DestinationCode[] }> = {
+  '2026-W43': { from: '2026-W42' },
+  '2026-W45': { from: '2026-W44', destinations: ['UK'] },
+}
 
 // Saptamana din care continua numerotarea, sau null daca numerotarea e normala
-export function getNumberingContinuationWeek(originCode: DestinationCode, weekId: string): string | null {
+export function getNumberingContinuationWeek(
+  originCode: DestinationCode,
+  deliveryDestination: DestinationCode,
+  weekId: string
+): string | null {
   if (originCode !== 'MD') return null
-  return MD_NUMBERING_CONTINUES_FROM[weekId] ?? null
+  const rule = MD_NUMBERING_CONTINUES_FROM[weekId]
+  if (!rule) return null
+  if (rule.destinations && !rule.destinations.includes(deliveryDestination)) return null
+  return rule.from
 }
 
 // ── Sortare colete: grupat pe SERIE (rută), apoi crescător după număr ──

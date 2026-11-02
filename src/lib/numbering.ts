@@ -71,7 +71,7 @@ export async function getContinuationFloor(
   deliveryDestination: DestinationCode,
   ctx?: { range_start: number; range_end: number; shared: boolean } | null
 ): Promise<number | null> {
-  const prevWeek = getNumberingContinuationWeek(originCode, weekId)
+  const prevWeek = getNumberingContinuationWeek(originCode, deliveryDestination, weekId)
   if (!prevWeek) return null
 
   const context = ctx ?? (await getNumberingContext(driverId, originCode, deliveryDestination))

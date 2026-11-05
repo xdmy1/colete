@@ -10,6 +10,7 @@ import {
   getCurrentWeekId,
 } from '../lib/utils'
 import { getContinuationFloor } from '../lib/numbering'
+import { pinToPassword } from '../lib/pin'
 
 // Coletele active (nearhivate) ale unui sofer
 export function useDriverParcels(driverId: string | undefined) {
@@ -87,7 +88,7 @@ export function useUpdateDriver() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       driverId,
       username,
       pin,
@@ -95,7 +96,40 @@ export function useUpdateDriver() {
       driverId: string
       username?: string
       pin?: string
-    }) => invokeAdminApi<{ success: true }>('update', { driverId, username, pin }),
+    }) => {
+      // Cand adminul isi schimba propriul PIN/nume, serverul de auth ii inchide
+      // toate sesiunile (si pe cea curenta). Citim datele finale inainte si
+      // il logam din nou imediat dupa, ca sa nu fie dat afara.
+      const { data: { user } } = await supabase.auth.getUser()
+      let relogin: { email: string; pin: string } | null = null
+      if (user?.id === driverId) {
+        const { data: me } = await supabase
+          .from('profiles')
+          .select('username, pin_code')
+          .eq('id', driverId)
+          .single()
+        if (me) {
+          relogin = {
+            email: `${username ?? me.username}@colete.local`,
+            pin: pin ?? me.pin_code,
+          }
+        }
+      }
+
+      const result = await invokeAdminApi<{ success: true }>('update', { driverId, username, pin })
+
+      if (relogin) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: relogin.email,
+          password: pinToPassword(relogin.pin),
+        })
+        if (error) {
+          await supabase.auth.signOut()
+          throw new Error('Salvat. Intră din nou cu PIN-ul nou.')
+        }
+      }
+      return result
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drivers'] })
     },
@@ -105,7 +139,11 @@ export function useUpdateDriver() {
 // Apeleaza endpoint-ul serverless de pe Vercel (`api/admin-drivers.ts`), care
 // face operatiile ce ating auth.users cu service role.
 // Nota: in `npm run dev` (Vite) ruta /api nu exista — pentru test local: `npx vercel dev`.
-async function invokeAdminApi<T>(action: string, payload: Record<string, unknown>): Promise<T> {
+async function invokeAdminApi<T>(
+  action: string,
+  payload: Record<string, unknown>,
+  retried = false
+): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('Sesiune expirată — autentifică-te din nou')
 
@@ -126,6 +164,16 @@ async function invokeAdminApi<T>(action: string, payload: Record<string, unknown
     // Raspuns non-JSON (ex. index.html cand ruta /api nu exista in dev)
   }
 
+  if (res.status === 401) {
+    // Sesiunea a fost inchisa pe server (ex. PIN schimbat). Incercam o data cu
+    // un token nou; daca nici asa nu merge, il ducem la ecranul de PIN.
+    if (!retried) {
+      const { error } = await supabase.auth.refreshSession()
+      if (!error) return invokeAdminApi<T>(action, payload, true)
+    }
+    await supabase.auth.signOut()
+    throw new Error('Sesiunea a expirat. Intră din nou cu PIN-ul.')
+  }
   if (!res.ok || body?.error) {
     throw new Error(body?.error || `Eroare server (${res.status})`)
   }
